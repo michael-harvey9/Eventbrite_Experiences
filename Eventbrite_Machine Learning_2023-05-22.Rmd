@@ -1,0 +1,720 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#load packages
+
+library(tidymodels)
+library(tidyverse)
+library(tibble)
+library(xgboost)
+library(ranger)
+library(doParallel)
+library(vip)
+
+```
+
+```{r}
+#load data
+
+load("Eventbrite_Data_Cleaned_2023-05-04.Rdata")
+
+```
+
+```{r}
+#decided to treat some ordinal variables as numeric to improve interpretability
+
+eventbrite_cleaned$CASP_19 <- as.numeric(eventbrite_cleaned$CASP_19)
+eventbrite_cleaned$SR_Health <- as.numeric(eventbrite_cleaned$SR_Health)
+eventbrite_cleaned$Daily_Gen_Anxiety <- as.numeric(eventbrite_cleaned$Daily_Gen_Anxiety)
+
+```
+
+```{r}
+#filter datasets with correct variables for analyses
+
+#baseline models
+
+eventbrite_baseline_enjoyment_fun <- eventbrite_cleaned %>%
+  select(Enjoyment_Fun_Composite, Age, Gender, SNI_Composite, CGSS_Composite, UCLA_Composite, CASP_19, SR_Health, PHQ_Composite, Subj_Happy_Composite, Social_Anxiety_Composite, Sat_Life_Composite, Personality_BFI_Extraversion:Relationship_Status, Event_To_PostSurvey_Days)
+
+eventbrite_baseline_social_con <- eventbrite_cleaned %>%
+  select(Social_Connection_Composite, Age, Gender, SNI_Composite, CGSS_Composite, UCLA_Composite, CASP_19, SR_Health, PHQ_Composite, Subj_Happy_Composite, Social_Anxiety_Composite, Sat_Life_Composite, Personality_BFI_Extraversion:Relationship_Status, Event_To_PostSurvey_Days)
+
+
+#event characteristics models
+
+eventbrite_event_enjoyment_fun <- eventbrite_cleaned %>%
+  select(Enjoyment_Fun_Composite, Age, Gender, SNI_Composite, CGSS_Composite, UCLA_Composite, CASP_19, SR_Health, PHQ_Composite, Subj_Happy_Composite, Social_Anxiety_Composite, Sat_Life_Composite, Personality_BFI_Extraversion:Relationship_Status, Event_To_PostSurvey_Days, Post_Event_Alone, Post_Active_Passive, Post_Event_Location, Post_Event_Virtual, Post_Event_Pay, Post_Event_Occurance)
+
+eventbrite_event_social_con <- eventbrite_cleaned %>%
+  select(Social_Connection_Composite, Age, Gender, SNI_Composite, CGSS_Composite, UCLA_Composite, CASP_19, SR_Health, PHQ_Composite, Subj_Happy_Composite, Social_Anxiety_Composite, Sat_Life_Composite, Personality_BFI_Extraversion:Relationship_Status, Event_To_PostSurvey_Days, Post_Event_Alone, Post_Active_Passive, Post_Event_Location, Post_Event_Virtual, Post_Event_Pay, Post_Event_Occurance)
+
+```
+
+
+Enjoyment/Fun
+
+
+```{r}
+#baseline
+
+#split data and create training and test sets
+
+set.seed(33)
+eventbrite_baseline_enjoyment_fun_split <- initial_split(eventbrite_baseline_enjoyment_fun, prop = 0.8)
+
+eventbrite_baseline_enjoyment_fun_train <- training(eventbrite_baseline_enjoyment_fun_split)
+eventbrite_baseline_enjoyment_fun_test <- testing(eventbrite_baseline_enjoyment_fun_split)
+
+#create cross-validation folds
+
+set.seed(33)
+eventbrite_baseline_enjoyment_fun_folds <- vfold_cv(eventbrite_baseline_enjoyment_fun_train, v = 10)
+
+#linear regression
+
+#create recipe
+
+eventbrite_baseline_enjoyment_fun_lm_recipe <-
+  recipe(Enjoyment_Fun_Composite ~ ., data = eventbrite_baseline_enjoyment_fun_train) %>%
+  step_impute_knn() %>%
+  step_poly() %>%
+  step_normalize()
+
+#create model
+
+eventbrite_baseline_enjoyment_fun_model_lm <- linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_baseline_enjoyment_fun_model_workflow_lm <- 
+  workflow() %>%
+  add_model(eventbrite_baseline_enjoyment_fun_model_lm) %>%
+  add_recipe(eventbrite_baseline_enjoyment_fun_lm_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))
+
+#fit model with resamples and collect metrics
+
+keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(33)
+eventbrite_baseline_enjoyment_fun_results_lm <- eventbrite_baseline_enjoyment_fun_model_workflow_lm %>%
+  fit_resamples(resamples = eventbrite_baseline_enjoyment_fun_folds, control = keep_pred)
+
+collect_metrics(eventbrite_baseline_enjoyment_fun_results_lm)
+  
+
+#random forests
+
+#create recipe
+
+eventbrite_baseline_enjoyment_fun_rand_recipe <-
+  recipe(Enjoyment_Fun_Composite ~ ., data = eventbrite_baseline_enjoyment_fun_train) %>%
+  step_impute_knn(everything())
+
+#create model
+
+eventbrite_baseline_enjoyment_fun_model_rand <- rand_forest(trees = 1000, mtry = tune(), min_n = tune()) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_baseline_enjoyment_fun_model_workflow_rand <- 
+  workflow() %>%
+  add_model(eventbrite_baseline_enjoyment_fun_model_rand) %>%
+  add_recipe(eventbrite_baseline_enjoyment_fun_rand_recipe)
+
+#create tuning grid
+
+set.seed(33)
+
+eventbrite_baseline_enjoyment_fun_rand_tuned <- tune_grid(
+  eventbrite_baseline_enjoyment_fun_model_workflow_rand,
+  resamples = eventbrite_baseline_enjoyment_fun_folds,
+  grid = 20
+)
+
+#show best model hyperparameters
+
+eventbrite_baseline_enjoyment_fun_rand_tuned %>%
+  show_best(metric = "rmse")
+
+#create final model
+
+final_rand_model_fun_bl <- 
+  rand_forest(mtry = 1, min_n = 4, trees = 1000) %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("regression")
+
+last_rand_wkflw_fun_bl <-
+  eventbrite_baseline_enjoyment_fun_model_workflow_rand %>%
+  update_model(final_rand_model_fun_bl)
+
+set.seed(33)
+last_rand_fit_fun_bl <-
+  last_rand_wkflw_fun_bl %>%
+  last_fit(eventbrite_baseline_enjoyment_fun_split)
+
+collect_metrics(last_rand_fit_fun_bl)
+
+
+#XGBoost
+
+#create recipe
+
+eventbrite_baseline_enjoyment_fun_xgb_recipe <-
+  recipe(Enjoyment_Fun_Composite ~ ., data = eventbrite_baseline_enjoyment_fun_train) %>%
+  step_impute_knn(everything()) %>%
+  step_dummy(all_factor_predictors())
+
+#create model
+
+eventbrite_baseline_enjoyment_fun_model_xgb <- boost_tree(trees = 1000, min_n = tune(), tree_depth = tune(), learn_rate = tune(), loss_reduction = tune()) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression")
+
+#grid specification for hyperparameter tuning
+
+eventbrite_baseline_enjoyment_fun_xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+#creating grid space
+
+eventbrite_baseline_enjoyment_fun_xgb_grid <- grid_max_entropy(
+  eventbrite_baseline_enjoyment_fun_xgb_params,
+  size = 32
+)
+
+#create model workflow
+
+eventbrite_baseline_enjoyment_fun_model_workflow_xgb <- 
+  workflow() %>%
+  add_model(eventbrite_baseline_enjoyment_fun_model_xgb) %>%
+  add_recipe(eventbrite_baseline_enjoyment_fun_xgb_recipe)
+
+#implement tuning grid
+
+xgboost_tuned <- tune_grid(
+  object = eventbrite_baseline_enjoyment_fun_model_workflow_xgb,
+  resamples = eventbrite_baseline_enjoyment_fun_folds,
+  grid = eventbrite_baseline_enjoyment_fun_xgb_grid,
+  metrics = metric_set(rmse, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+#show best model hyperparameters
+
+xgboost_tuned %>%
+  show_best(metric = "rmse")
+
+```
+
+```{r}
+#event
+
+#split data and create training and test sets
+
+set.seed(33)
+eventbrite_event_enjoyment_fun_split <- initial_split(eventbrite_event_enjoyment_fun, prop = 0.8)
+
+eventbrite_event_enjoyment_fun_train <- training(eventbrite_event_enjoyment_fun_split)
+eventbrite_event_enjoyment_fun_test <- testing(eventbrite_event_enjoyment_fun_split)
+
+#create cross-validation folds
+
+set.seed(33)
+eventbrite_event_enjoyment_fun_folds <- vfold_cv(eventbrite_event_enjoyment_fun_train, v = 10)
+
+
+#linear regression
+
+#create recipe
+
+eventbrite_event_enjoyment_fun_lm_recipe <-
+  recipe(Enjoyment_Fun_Composite ~ ., data = eventbrite_event_enjoyment_fun_train) %>%
+  step_impute_knn() %>%
+  step_poly() %>%
+  step_normalize()
+
+#create model
+
+eventbrite_event_enjoyment_fun_model_lm <- linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_event_enjoyment_fun_model_workflow_lm <- 
+  workflow() %>%
+  add_model(eventbrite_event_enjoyment_fun_model_lm) %>%
+  add_recipe(eventbrite_event_enjoyment_fun_lm_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))
+
+#fit model with resamples and collect metrics
+
+keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(33)
+eventbrite_event_enjoyment_fun_results_lm <- eventbrite_event_enjoyment_fun_model_workflow_lm %>%
+  fit_resamples(resamples = eventbrite_event_enjoyment_fun_folds, control = keep_pred)
+
+collect_metrics(eventbrite_event_enjoyment_fun_results_lm)
+
+
+#random forests
+
+#create recipe
+
+eventbrite_event_enjoyment_fun_rand_recipe <-
+  recipe(Enjoyment_Fun_Composite ~ ., data = eventbrite_event_enjoyment_fun_train) %>%
+  step_impute_knn(everything())
+
+#create model
+
+eventbrite_event_enjoyment_fun_model_rand <- rand_forest(trees = 1000, mtry = tune(), min_n = tune()) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_event_enjoyment_fun_model_workflow_rand <- 
+  workflow() %>%
+  add_model(eventbrite_event_enjoyment_fun_model_rand) %>%
+  add_recipe(eventbrite_event_enjoyment_fun_rand_recipe)
+
+#create tuning grid
+
+set.seed(33)
+
+eventbrite_event_enjoyment_fun_rand_tuned <- tune_grid(
+  eventbrite_event_enjoyment_fun_model_workflow_rand,
+  resamples = eventbrite_event_enjoyment_fun_folds,
+  grid = 20
+)
+
+#show best model hyperparameters
+
+eventbrite_event_enjoyment_fun_rand_tuned %>%
+  show_best(metric = "rmse")
+
+#create final model
+
+final_rand_model_enjoyment_event <- 
+  rand_forest(mtry = 3, min_n = 35, trees = 1000) %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("regression")
+
+last_rand_wkflw_enjoyment <-
+  eventbrite_event_enjoyment_fun_model_workflow_rand %>%
+  update_model(final_rand_model_enjoyment_event)
+
+set.seed(33)
+last_rand_fit_enjoyment <-
+  last_rand_wkflw_enjoyment %>%
+  last_fit(eventbrite_event_enjoyment_fun_split)
+
+collect_metrics(last_rand_fit_enjoyment)
+
+#extract feature importance scores
+
+last_rand_fit_enjoyment %>%
+  extract_fit_parsnip() %>%
+  vip(num_features =  30, geom = "point", scale = TRUE,
+      aesthetics = list())
+
+
+#XGBoost
+
+#create recipe
+
+eventbrite_event_enjoyment_fun_xgb_recipe <-
+  recipe(Enjoyment_Fun_Composite ~ ., data = eventbrite_event_enjoyment_fun_train) %>%
+  step_impute_knn(everything()) %>%
+  step_dummy(all_factor_predictors())
+
+#create model
+
+eventbrite_event_enjoyment_fun_model_xgb <- boost_tree(trees = 1000, min_n = tune(), tree_depth = tune(), learn_rate = tune(), loss_reduction = tune()) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression")
+
+#grid specification for hyperparameter tuning
+
+eventbrite_event_enjoyment_fun_xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+#creating grid space
+
+eventbrite_event_enjoyment_fun_xgb_grid <- grid_max_entropy(
+  eventbrite_event_enjoyment_fun_xgb_params,
+  size = 32
+)
+
+#create model workflow
+
+eventbrite_event_enjoyment_fun_model_workflow_xgb <- 
+  workflow() %>%
+  add_model(eventbrite_event_enjoyment_fun_model_xgb) %>%
+  add_recipe(eventbrite_event_enjoyment_fun_xgb_recipe)
+
+#implement tuning grid
+
+xgboost_tuned_event <- tune_grid(
+  object = eventbrite_event_enjoyment_fun_model_workflow_xgb,
+  resamples = eventbrite_event_enjoyment_fun_folds,
+  grid = eventbrite_event_enjoyment_fun_xgb_grid,
+  metrics = metric_set(rmse, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+#show best model hyperparameters
+
+xgboost_tuned_event %>%
+  show_best(metric = "rmse")
+
+```
+
+
+Event Social Connection
+
+
+```{r}
+#baseline
+
+#split data and create training and test sets
+
+set.seed(33)
+eventbrite_baseline_social_con_split <- initial_split(eventbrite_baseline_social_con, prop = 0.8)
+
+eventbrite_baseline_social_con_train <- training(eventbrite_baseline_social_con_split)
+eventbrite_baseline_social_con_test <- testing(eventbrite_baseline_social_con_split)
+
+#create cross-validation folds
+
+set.seed(33)
+eventbrite_baseline_social_con_folds <- vfold_cv(eventbrite_baseline_social_con_train, v = 10)
+
+
+#linear regression
+
+#create recipe
+
+eventbrite_baseline_social_con_lm_recipe <-
+  recipe(Social_Connection_Composite ~ ., data = eventbrite_baseline_social_con_train) %>%
+  step_impute_knn() %>%
+  step_poly() %>%
+  step_normalize()
+
+#create model
+
+eventbrite_baseline_social_con_model_lm <- linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_baseline_social_con_model_workflow_lm <- 
+  workflow() %>%
+  add_model(eventbrite_baseline_social_con_model_lm) %>%
+  add_recipe(eventbrite_baseline_social_con_lm_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))
+
+#fit model with resamples and collect metrics
+
+keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(33)
+eventbrite_baseline_social_con_results_lm <- eventbrite_baseline_social_con_model_workflow_lm %>%
+  fit_resamples(resamples = eventbrite_baseline_social_con_folds, control = keep_pred)
+
+collect_metrics(eventbrite_baseline_social_con_results_lm)
+
+
+#random forests
+
+#create recipe
+
+eventbrite_baseline_social_con_rand_recipe <-
+  recipe(Social_Connection_Composite ~ ., data = eventbrite_baseline_social_con_train) %>%
+  step_impute_knn(everything())
+
+#create model
+
+eventbrite_baseline_social_con_model_rand <- rand_forest(trees = 1000, mtry = tune(), min_n = tune()) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_baseline_social_con_model_workflow_rand <- 
+  workflow() %>%
+  add_model(eventbrite_baseline_social_con_model_rand) %>%
+  add_recipe(eventbrite_baseline_social_con_rand_recipe)
+
+#create tuning grid
+
+set.seed(33)
+
+eventbrite_baseline_social_con_rand_tuned <- tune_grid(
+  eventbrite_baseline_social_con_model_workflow_rand,
+  resamples = eventbrite_baseline_social_con_folds,
+  grid = 20
+)
+
+#show best model hyperparameters
+
+eventbrite_baseline_social_con_rand_tuned %>%
+  show_best(metric = "rmse")
+
+#create final model
+
+final_rand_model_social_con_bl <- 
+  rand_forest(mtry = 1, min_n = 4, trees = 1000) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+last_rand_wkflw_social_con_bl <-
+  eventbrite_baseline_social_con_model_workflow_rand %>%
+  update_model(final_rand_model_social_con_bl)
+
+set.seed(33)
+last_rand_fit_social_con_bl <-
+  last_rand_wkflw_social_con_bl %>%
+  last_fit(eventbrite_baseline_social_con_split)
+
+collect_metrics(last_rand_fit_social_con_bl)
+
+
+#XGBoost
+
+#create recipe
+
+eventbrite_baseline_social_con_xgb_recipe <-
+  recipe(Social_Connection_Composite ~ ., data = eventbrite_baseline_social_con_train) %>%
+  step_impute_knn(everything()) %>%
+  step_dummy(all_factor_predictors())
+
+#create model
+
+eventbrite_baseline_social_con_model_xgb <- boost_tree(trees = 1000, min_n = tune(), tree_depth = tune(), learn_rate = tune(), loss_reduction = tune()) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression")
+
+#grid specification for hyperparameter tuning
+
+eventbrite_baseline_social_con_xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+#creating grid space
+
+eventbrite_baseline_social_con_xgb_grid <- grid_max_entropy(
+  eventbrite_baseline_social_con_xgb_params,
+  size = 32
+)
+
+#create model workflow
+
+eventbrite_baseline_social_con_model_workflow_xgb <- 
+  workflow() %>%
+  add_model(eventbrite_baseline_social_con_model_xgb) %>%
+  add_recipe(eventbrite_baseline_social_con_xgb_recipe)
+
+#implement tuning grid
+
+xgboost_tuned_social_con <- tune_grid(
+  object = eventbrite_baseline_social_con_model_workflow_xgb,
+  resamples = eventbrite_baseline_social_con_folds,
+  grid = eventbrite_baseline_social_con_xgb_grid,
+  metrics = metric_set(rmse, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+#show best model hyperparameters
+
+xgboost_tuned_social_con %>%
+  show_best(metric = "rmse")
+
+```
+
+```{r}
+#event
+
+#split data and create training and test sets
+
+set.seed(33)
+eventbrite_event_social_con_split <- initial_split(eventbrite_event_social_con, prop = 0.8)
+
+eventbrite_event_social_con_train <- training(eventbrite_event_social_con_split)
+eventbrite_event_social_con_test <- testing(eventbrite_event_social_con_split)
+
+#create cross-validation folds
+
+set.seed(33)
+eventbrite_event_social_con_folds <- vfold_cv(eventbrite_event_social_con_train, v = 10)
+
+
+#linear regression
+
+#create recipe
+
+eventbrite_event_social_con_lm_recipe <-
+  recipe(Social_Connection_Composite ~ ., data = eventbrite_event_social_con_train) %>%
+  step_impute_knn() %>%
+  step_poly() %>%
+  step_normalize()
+
+#create model
+
+eventbrite_event_social_con_model_lm <- linear_reg() %>%
+  set_engine("lm") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_event_social_con_model_workflow_lm <- 
+  workflow() %>%
+  add_model(eventbrite_event_social_con_model_lm) %>%
+  add_recipe(eventbrite_event_social_con_lm_recipe, blueprint = hardhat::default_recipe_blueprint(allow_novel_levels = TRUE))
+
+#fit model with resamples and collect metrics
+
+keep_pred <- control_resamples(save_pred = TRUE, save_workflow = TRUE)
+
+set.seed(33)
+eventbrite_event_social_con_results_lm <- eventbrite_event_social_con_model_workflow_lm %>%
+  fit_resamples(resamples = eventbrite_event_social_con_folds, control = keep_pred)
+
+collect_metrics(eventbrite_event_social_con_results_lm)
+
+
+#random forests
+
+#create recipe
+
+eventbrite_event_social_con_rand_recipe <-
+  recipe(Social_Connection_Composite ~ ., data = eventbrite_event_social_con_train) %>%
+  step_impute_knn(everything())
+
+#create model
+
+eventbrite_event_social_con_model_rand <- rand_forest(trees = 1000, mtry = tune(), min_n = tune()) %>%
+  set_engine("ranger") %>%
+  set_mode("regression")
+
+#create model workflow
+
+eventbrite_event_social_con_model_workflow_rand <- 
+  workflow() %>%
+  add_model(eventbrite_event_social_con_model_rand) %>%
+  add_recipe(eventbrite_event_social_con_rand_recipe)
+
+#create tuning grid
+
+set.seed(33)
+
+eventbrite_event_social_con_rand_tuned <- tune_grid(
+  eventbrite_event_social_con_model_workflow_rand,
+  resamples = eventbrite_event_social_con_folds,
+  grid = 20
+)
+
+#show best model hyperparameters
+
+eventbrite_event_social_con_rand_tuned %>%
+  show_best(metric = "rmse")
+
+#create final model
+
+final_rand_model_social_con_event <- 
+  rand_forest(mtry = 7, min_n = 22, trees = 1000) %>%
+  set_engine("ranger", importance = "impurity") %>%
+  set_mode("regression")
+
+last_rand_wkflw_social_con <-
+  eventbrite_event_social_con_model_workflow_rand %>%
+  update_model(final_rand_model_social_con_event)
+
+set.seed(33)
+last_rand_fit_social_con <-
+  last_rand_wkflw_social_con %>%
+  last_fit(eventbrite_event_social_con_split)
+
+collect_metrics(last_rand_fit_social_con)
+
+#extract feature importance scores
+
+last_rand_fit_social_con %>% 
+  extract_fit_parsnip() %>%
+  vip(num_features =  30, geom = "point", scale = TRUE)
+
+
+
+#XGBoost
+
+#create recipe
+
+eventbrite_event_social_con_xgb_recipe <-
+  recipe(Social_Connection_Composite ~ ., data = eventbrite_event_social_con_train) %>%
+  step_impute_knn(everything()) %>%
+  step_dummy(all_factor_predictors())
+
+#create model
+
+eventbrite_event_social_con_model_xgb <- boost_tree(trees = 1000, min_n = tune(), tree_depth = tune(), learn_rate = tune(), loss_reduction = tune()) %>%
+  set_engine("xgboost") %>%
+  set_mode("regression")
+
+#grid specification for hyperparameter tuning
+
+eventbrite_event_social_con_xgb_params <- parameters(
+  min_n(),
+  tree_depth(),
+  learn_rate(),
+  loss_reduction()
+)
+
+#creating grid space
+
+eventbrite_event_social_con_xgb_grid <- grid_max_entropy(
+  eventbrite_event_social_con_xgb_params,
+  size = 32
+)
+
+#create model workflow
+
+eventbrite_event_social_con_model_workflow_xgb <- 
+  workflow() %>%
+  add_model(eventbrite_event_social_con_model_xgb) %>%
+  add_recipe(eventbrite_event_social_con_xgb_recipe)
+
+#implement tuning grid
+
+xgboost_tuned_event_social_con <- tune_grid(
+  object = eventbrite_event_social_con_model_workflow_xgb,
+  resamples = eventbrite_event_social_con_folds,
+  grid = eventbrite_event_social_con_xgb_grid,
+  metrics = metric_set(rmse, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+#show best model hyperparameters
+
+xgboost_tuned_event_social_con %>%
+  show_best(metric = "rmse")
+
+```

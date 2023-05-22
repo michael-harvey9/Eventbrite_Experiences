@@ -1,0 +1,114 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#load packages
+
+library(gt)
+library(tidyverse)
+library(gtExtras)
+library(shiny)
+
+```
+
+```{r}
+#create table for training RMSE values for post-event socioemotional experiences
+
+postevent_socioemotional <- data.frame(model = c("Depression Baseline", "Depression Event Characteristics", "Social Connection Baseline", "Social Connection Event Characteristics", "Loneliness Baseline", "Loneliness Event Characteristics", "Social Anxiety Baseline", "Social Anxiety Event Characteristics", "General Anxiety Baseline", "General Anxiety Event Characteristics"), lr = c(3.51, 5.51, 2.04, 2.87, 4.30, 9.00, 6.43, 15.01, 1.52, 2.34), rf = c(2.61, 2.60, 1.61, 1.60, 3.32, 3.31, 5.43, 5.41, 1.02, 1.02), xgb = c(2.63, 2.61, 1.62, 1.62, 3.35, 3.36, 5.52, 5.46, 1.04, 1.03))
+
+as_tibble(postevent_socioemotional)
+
+postevent_socioemotional_gt_table <- postevent_socioemotional %>%
+  gt(rowname_col = "model") %>%
+  gt_theme_nytimes() %>%
+  tab_header(
+    title = "Post-Event Socioemotional States (Training)",
+    subtitle = md("*Table 3.* Training set RMSE values for baseline models and event characteristics models predicting five post-event socioemotional state outcome variables: depression, social connection, loneliness, social anxiety, and general anxiety. On average, participants completed the post-event survey one day after attending their event.")
+  ) %>%
+  cols_label(
+    lr = "Linear Regression",
+    rf = "Random Forests",
+    xgb = "Gradient Boosting Machines"
+    ) %>%
+  tab_footnote(
+    footnote = md("*Note:* RMSE values are unstandardized: depression was measured on a scale of 2-14, social connection was measured on a scale of 2-14, loneliness was measured on a scale of 4-20, social anxiety was measured on a scale of 7-35, and general anxiety was measured on a scale of 1-5. Random forests, bolded, was the best performing model for each model set.")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = rf)
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_body(columns = everything())
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_stub(rows = TRUE)
+  ) %>%
+  tab_options(
+    footnotes.font.size = 12,
+    heading.padding = 3,
+    data_row.padding = 4
+  )
+
+postevent_socioemotional_gt_table %>%
+  gtsave("Eventbrite_Table 3_2023-05-19.pdf")
+
+```
+
+```{r}
+#create table for test RMSE values for post-event socioemotional states
+
+postevent_socioemotional_final <- data.frame(model = c("Depression Baseline", "Depression Event Characteristics", "Depression Difference", "Social Connection Baseline", "Social Connection Event Characteristics", "Social Connection Difference", "Loneliness Baseline", "Loneliness Event Characteristics", "Loneliness Difference", "Social Anxiety Baseline", "Social Anxiety Event Characteristics", "Social Anxiety Difference", "General Anxiety Baseline", "General Anxiety Event Characteristics", "General Anxiety Difference"), rf = c(2.41, 2.45, "-0.04 (-1.7%)", 1.49, 1.47, "0.02 (1.3%)", 3.07, 3.09, "-0.02 (-0.7%)", 5.01, 5.07, "-0.06 (-1.2%)", 0.96, 0.97, "-0.01 (-1.0%)"))
+                                               
+as_tibble(postevent_socioemotional_final)
+
+postevent_socioemotional_final_gt_table <- postevent_socioemotional_final %>%
+  gt(rowname_col = "model") %>%
+  gt_theme_nytimes() %>%
+  tab_header(
+    title = "Post-Event Socioemotional States (Test)",
+    subtitle = md("*Table 4.* Test set RMSE values for baseline models and event characteristics models predicting five post-event socioemotional state outcome variables: depression, social connection, loneliness, social anxiety, and general anxiety. On average, participants completed the post-event survey one day after attending their event.")
+  ) %>%
+  cols_label(
+    rf = "Random Forests"
+    ) %>%
+  tab_footnote(
+    footnote = md("*Note:* RMSE values are unstandardized: depression was measured on a scale of 2-14, social connection was measured on a scale of 2-14, loneliness was measured on a scale of 4-20, social anxiety was measured on a scale of 7-35, and general anxiety was measured on a scale of 1-5. RMSE differences (and percent improvement in RMSE scores) between baseline and event characteristics models are bolded.")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"), 
+    locations = cells_body(columns = rf, rows = c(3, 6, 9, 12, 15))
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_body(columns = everything())
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_stub(rows = TRUE)
+  ) %>%
+  tab_options(
+    footnotes.font.size = 12,
+    heading.padding = 3,
+    data_row.padding = 4
+  ) %>%
+  cols_width(
+    model ~ px(400)
+  )
+
+postevent_socioemotional_final_gt_table %>%
+  gtsave("Eventbrite_Table 4_2023-05-19.pdf")
+
+```
+

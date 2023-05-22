@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#load packages
+
+library(tidyverse)
+library(gt)
+library(sysfonts)
+library(ggtext)
+
+```
+
+```{r}
+#create enjoyment/fun tibble of feature importance scores
+
+enjoyment_fun_fi <- data.frame(variables = c("Subjective Happiness", "Life Satisfaction", "Social Networks", "Age", "Agreeableness", "Neuroticism", "Conscientiousness", "Openness", "Extraversion", "Trust", "Social Anxiety", "Depression", "Active vs. Passive", "Attended Alone vs. With Others", "Days Elapsed Between Event and Survey", "Loneliness", "Paid vs. Free", "Quality of Life", "Virtual vs. In-Person", "Relationship Status", "One-Time vs. Recurring", "Self-Rated Health", "Ethnicity", "Gender", "Indoors vs. Outdoors", "Sexual Orientation"), fi_scores = c(100, 76, 71, 70, 62, 61, 60, 58, 56, 54, 52, 50, 49, 30, 28, 26, 24, 24, 20, 16, 15, 14, 13, 11, 10, 2))
+
+as_tibble(enjoyment_fun_fi)
+
+```
+
+```{r}
+#create enjoyment/fun dot plot
+
+subtitle <- "*Figure 1.* Dot plot of feature importance scores for final random<br> forests model predicting enjoyment/fun."
+
+caption <- "*Note:* Feature importance scores are standardized such that the most important<br> feature is assigned a score of 100 and other features are scored relatively."
+
+enjoyment_fun_fi_dotplot <- ggplot(enjoyment_fun_fi, aes(x = fi_scores, y = reorder(variables, fi_scores))) +
+  geom_point(col = "tomato3", size = 3) +
+  labs(title = "Feature Importance (Enjoyment/Fun)",
+       subtitle = subtitle,
+       caption = caption) +
+  theme_minimal() +
+  xlab(label = "\nFeature Importance Scores\n") + 
+  ylab(label = NULL) +
+  theme(plot.title = element_text(family = "Libre Franklin", face = "bold"),
+        plot.subtitle = element_markdown(family = "Libre Franklin", color = "grey40"),
+        plot.caption = element_markdown(family = "Source Sans Pro", size = 10, hjust = 0, color = "grey40"),
+        axis.text = element_text(family = "Source Sans Pro")
+        ) 
+
+ggsave("Eventbrite_FIPlot_EnjoymentFun_2023-05-19.pdf", plot = enjoyment_fun_fi_dotplot, device = cairo_pdf)
+
+```
+
+```{r}
+#create social connection tibble of feature importance scores
+
+social_connection_fi <- data.frame(variables = c("Active vs. Passive", "Subjective Happiness", "Age", "Life Satisfaction", "Social Network", "Extraversion", "Virtual vs. In-Person", "Trust", "Depression", "Conscientiousness", "Neuroticism", "Attended Alone vs. With Others", "Openness", "Social Anxiety", "Agreeableness", "Loneliness", "Days Elapsed Between Event and Survey", "Quality of Life", "Relationship Status", "Paid vs. Free", "Self-Rated Health", "Ethnicity", "One-Time vs. Recurring", "Gender", "Indoors vs. Outdoors", "Sexual Orientation"), fi_scores = c(100, 46, 45, 43, 42, 36, 35, 34, 33, 32, 28, 28, 27, 26, 25, 18, 13, 11, 10, 6, 6, 5, 4, 4, 3, 1))
+
+as.tibble(social_connection_fi)
+
+```
+
+```{r}
+#create social connection dot plot
+
+subtitle <- "*Figure 2.* Dot plot of feature importance scores for final random<br> forests model predicting social connection."
+
+caption <- "*Note:* Feature importance scores are standardized such that the most important<br> feature is assigned a score of 100 and other features are scored relatively."
+
+social_connection_fi_dotplot <- ggplot(social_connection_fi, aes(x = fi_scores, y = reorder(variables, fi_scores))) +
+  geom_point(col = "tomato3", size = 3) +
+  labs(title = "Feature Importance (Social Connection)",
+       subtitle = subtitle,
+       caption = caption) +
+  theme_minimal() +
+  xlab(label = "\nFeature Importance Scores\n") + 
+  ylab(label = NULL) +
+  theme(plot.title = element_text(family = "Libre Franklin", face = "bold"),
+        plot.subtitle = element_markdown(family = "Libre Franklin", color = "grey40"),
+        plot.caption = element_markdown(family = "Source Sans Pro", size = 10, hjust = 0, color = "grey40"),
+        axis.text = element_text(family = "Source Sans Pro")
+        ) 
+
+ggsave("Eventbrite_FIPlot_SocialConnection_2023-05-19.pdf", plot = social_connection_fi_dotplot, device = cairo_pdf)
+
+```
+

@@ -1,0 +1,840 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+#install and load packages
+
+library("labelled")
+library("tidyverse")
+library("fastDummies")
+library("haven")
+
+```
+
+```{r}
+#import data using read_csv. *original data file left out to protect participants' anonymity
+
+```
+
+```{r}
+#examine overview of data
+
+class(pre)
+dim(pre)
+glimpse(pre)
+
+class(post)
+dim(post)
+glimpse(post)
+
+```
+
+```{r}
+#merge datasets together
+
+eventbrite <- merge(pre, post, by.x = "email", by.y = "RecipientEmail", all.x = TRUE, all.y = TRUE)
+
+```
+
+```{r}
+#filter data
+
+eventbrite_cleaned <- eventbrite %>% 
+  filter(Progress.x=="100") %>% #completed pre-event and post-event surveys
+  filter(Progress.y=="100") %>% #completed pre-event and post-event surveys
+  filter(consent=="4") %>%  #consented to survey
+  filter(DistributionChannel.x=="anonymous") %>% #non survey preview
+  filter(DistributionChannel.y=="email") %>% #non survey preview
+  filter(attendance=="1") %>% #attended event
+  filter(!data_quality.x %in% c('1', '2')) %>% #attention check
+  filter(!data_quality.y %in% c('1', '2')) %>% #attention check
+  select(email, StartDate.x, what_event:comments.x, RecordedDate.y, event_occurance.y:comments.y) %>% #removes columns that we don't need 
+  distinct(email, .keep_all = TRUE) #removes duplicate entries and keeps all other info
+
+```
+
+```{r}
+#renaming and creating proper variables, changing variable values
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  rename(Event3 = "When_event#3_1")
+
+eventbrite_cleaned$Event3[eventbrite_cleaned$Event3 == "1"] <- "2022"
+eventbrite_cleaned$Event3[eventbrite_cleaned$Event3 == "2"] <- "2023"
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  rename(Email = "email") %>%
+  rename(Pre_Survey_Date = "StartDate.x") %>%
+  rename(Event = "what_event") %>%
+  unite(col = "EventDate", 4:6, na.rm = FALSE, remove = TRUE) %>%
+  rename(Age = "age") %>%
+  rename(Gender = "gender") %>%
+  rename(Pre_Event_Occurance = "event_occurance.x") %>%
+  rename(Pre_Event_Attendance = "event_attendance.x") %>%
+  rename(Pre_Event_Alone = "attendance_known.x") %>%
+  rename(Pre_Group_Amount = "group_amount.x") %>%
+  rename(Pre_Group_Who = "who_attended.x") %>%
+  rename(Pre_Group_Variance = "group_variance.x") %>%
+  rename(Pre_Prefer_Alone = "attend_alone.x") %>%
+  rename(Pre_Active_Passive = "active_passive.x") %>%
+  rename(Pre_Event_Location = "event_location.x") %>%
+  rename(Pre_Event_Virtual = "inperson_virtual.x") %>%
+  rename(Pre_Event_Pay = "pay.x") %>%
+  rename(SNI_1 = "sni_1") %>%
+  rename(SNI_2 = "sni_2") %>%
+  rename(SNI_3 = "sni_3") %>%
+  rename(SNI_4 = "sni_4") %>%
+  rename(SNI_5 = "sni_5") %>%
+  rename(SNI_6 = "sni_6") %>%
+  rename(SNI_7 = "sni_7") %>%
+  rename(SNI_8 = "sni_8") %>%
+  rename(SNI_9 = "sni_9") %>%
+  rename(SNI_10 = "sni_10") %>%
+  rename(SNI_11 = "sni_11") %>%
+  rename(CGSS_1 = "trust_1") %>%
+  rename(CGSS_2 = "trust_2_1") %>%
+  rename(CGSS_3 = "trust_2_2") %>%
+  rename(CGSS_4 = "trust_2_3") %>%
+  rename(CGSS_5 = "trust_2_4") %>%
+  rename(CGSS_6 = "trust_3") %>%
+  rename(CGSS_7 = "trust_4") %>%
+  rename(UCLA_1 = "ucla_1") %>%
+  rename(UCLA_2 = "ucla_2") %>%
+  rename(UCLA_3 = "ucla_3") %>%
+  rename(CASP_19 = "purpose") %>%
+  rename(SR_Health = "health") %>%
+  rename(PHQ_1 = "phq_depression_1") %>%
+  rename(PHQ_2 = "phq_depression_2") %>%
+  rename(PHQ_3 = "phq_depression_3") %>%
+  rename(PHQ_4 = "phq_depression_4") %>%
+  rename(PHQ_5 = "phq_depression_5") %>%
+  rename(PHQ_6 = "phq_depression_6") %>%
+  rename(PHQ_7 = "phq_depression_7") %>%
+  rename(PHQ_8 = "phq_depression_8") %>%
+  rename(PHQ_9 = "depression_difficult") %>%
+  rename(Subj_Happy_1 = "happiness_1") %>%
+  rename(Subj_Happy_2 = "happiness_2") %>%
+  rename(Subj_Happy_3 = "happiness_3") %>%
+  rename(Subj_Happy_4 = "happiness_4") %>%
+  rename(Social_Anxiety_1 = "social_anxiety_1") %>%
+  rename(Social_Anxiety_2 = "social_anxiety_2") %>%
+  rename(Social_Anxiety_3 = "social_anxiety_3") %>%
+  rename(Sat_Life_1 = "life_satisfaction_1") %>%
+  rename(Sat_Life_2 = "life_satisfaction_2") %>%
+  rename(Sat_Life_3 = "life_satisfaction_3") %>%
+  rename(Sat_Life_4 = "life_satisfaction_4") %>%
+  rename(Sat_Life_5 = "life_satisfaction_5") %>%
+  rename(Personality_BFI_1 = "personality_1") %>%
+  rename(Personality_BFI_2 = "personality_2") %>%
+  rename(Personality_BFI_3 = "personality_3") %>%
+  rename(Personality_BFI_4 = "personality_4") %>%
+  rename(Personality_BFI_5 = "personality_5") %>%
+  rename(Personality_BFI_6 = "personality_6") %>%
+  rename(Personality_BFI_7 = "personality_7") %>%
+  rename(Personality_BFI_8 = "personality_8") %>%
+  rename(Personality_BFI_9 = "personality_9") %>%
+  rename(Personality_BFI_10 = "personality_10") %>%
+  rename(Personality_BFI_11 = "personality_11") %>%
+  rename(Personality_BFI_12 = "personality_12") %>%
+  rename(Personality_BFI_13 = "personality_13") %>%
+  rename(Personality_BFI_14 = "personality_14") %>%
+  rename(Personality_BFI_15 = "personality_15") %>%
+  rename(Sexual_Orientation = "sexual_orientation") %>%
+  rename(Ethnicity = "ethnicity") %>%
+  rename(Relationship_Status = "relationship_status") %>%
+  rename(Subj_SES = "ses_ladder") %>%
+  rename(Income = "income") %>%
+  rename(Politics = "political_alignment") %>%
+  rename(Pre_Attention_Check = "data_quality.x") %>%
+  rename(Pre_Attention_Comments = "comments.x") %>%
+  rename(Post_Survey_Date = "RecordedDate.y") %>%
+  rename(Post_Event_Occurance = "event_occurance.y") %>%
+  rename(Post_Event_Attendance = "event_attendance.y") %>%
+  rename(Post_Event_Alone = "attendance_known.y") %>%
+  rename(Post_Group_Amount = "group_amount.y") %>%
+  rename(Post_Group_Who = "who_attended.y") %>%
+  rename(Post_Group_Variance = "group_variance.y") %>%
+  rename(Post_Prefer_Alone = "attend_alone.y") %>%
+  rename(Post_Active_Passive = "active_passive.y") %>%
+  rename(Post_Event_Location = "event_location.y") %>%
+  rename(Post_Event_Virtual = "inperson_virtual.y") %>%
+  rename(Post_Event_Pay = "pay.y") %>%
+  rename(Enjoyment = "enjoyment_1") %>%
+  rename(Fun = "fun_1") %>%
+  rename(Social_Connection_1 = "connection_1_1") %>%
+  rename(Social_Connection_2 = "connection_1_2") %>%
+  rename(Social_Connection_3 = "connection_2_1") %>%
+  rename(Social_Connection_4 = "connection_2_2") %>%
+  rename(Daily_Depression_1 = "daily_depression_1") %>%
+  rename(Daily_Depression_2 = "daily_depression_2") %>%
+  rename(Daily_Loneliness_1 = "daily_loneliness_1") %>%
+  rename(Daily_Loneliness_2 = "daily_loneliness_2") %>%
+  rename(Daily_Loneliness_3 = "daily_loneliness_3") %>%
+  rename(Daily_Loneliness_4 = "daily_loneliness_4") %>%
+  rename(Daily_Social_Anxiety_1 = "daily_social_anxiety_1") %>%
+  rename(Daily_Social_Anxiety_2 = "daily_social_anxiety_2") %>%
+  rename(Daily_Social_Anxiety_3 = "daily_social_anxiety_3") %>%
+  rename(Daily_Social_Anxiety_4 = "daily_social_anxiety_4") %>%
+  rename(Daily_Social_Anxiety_5 = "daily_social_anxiety_5") %>%
+  rename(Daily_Social_Anxiety_6 = "daily_social_anxiety_6") %>%
+  rename(Daily_Social_Anxiety_7 = "daily_social_anxiety_7") %>%
+  rename(Daily_Gen_Anxiety = "daily_gen_anxiety") %>%
+  rename(Daily_Social_Con_1 = "daily_social_connect_1") %>%
+  rename(Daily_Social_Con_2 = "daily_social_connect_2") %>%
+  rename(Post_Attention_Check = "data_quality.y") %>%
+  rename(Post_Attention_Comments = "comments.y")
+ 
+```
+
+```{r}
+#created dummy columns
+
+#changed two 'select all that apply' variables into dummy coded variables - one for each option
+
+eventbrite_cleaned <- dummy_cols(eventbrite_cleaned, select_columns = "event_type.x", remove_first_dummy = FALSE, remove_most_frequent_dummy = FALSE, ignore_na = TRUE, split = ",", remove_selected_columns = TRUE)
+    
+eventbrite_cleaned <- dummy_cols(eventbrite_cleaned, select_columns = "event_type.y", remove_first_dummy = FALSE, remove_most_frequent_dummy = FALSE, ignore_na = TRUE, split = ",", remove_selected_columns = TRUE)
+
+```
+
+```{r}
+#renamed the newly-created dummy variables
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  rename(Pre_EventType_Auto_Boat = "event_type.x_1") %>%
+  rename(Pre_EventType_Business = "event_type.x_2") %>%
+  rename(Pre_EventType_Charity = "event_type.x_3") %>%
+  rename(Pre_EventType_Community = "event_type.x_4") %>%
+  rename(Pre_EventType_Family_Education = "event_type.x_5") %>%
+  rename(Pre_EventType_Fashion = "event_type.x_6") %>%
+  rename(Pre_EventType_Food_Drink = "event_type.x_7") %>%
+  rename(Pre_EventType_Government = "event_type.x_8") %>%
+  rename(Pre_EventType_Health = "event_type.x_9") %>%
+  rename(Pre_EventType_Hobbies = "event_type.x_10") %>%
+  rename(Pre_EventType_Home_Lifestyle = "event_type.x_11") %>%
+  rename(Pre_EventType_Music = "event_type.x_12") %>%
+  rename(Pre_EventType_Arts = "event_type.x_13") %>%
+  rename(Pre_EventType_Spirituality = "event_type.x_14") %>%
+  rename(Pre_EventType_Science_Technology = "event_type.x_15") %>%
+  rename(Pre_EventType_School = "event_type.x_16") %>%
+  rename(Pre_EventType_Sports_Fitness = "event_type.x_17") %>%
+  rename(Pre_EventType_Travel_Outdoors = "event_type.x_18") %>%
+  rename(Pre_EventType_Holiday = "event_type.x_19") %>%
+  rename(Pre_EventType_Film_Media = "event_type.x_20") %>%
+  rename(Pre_EventType_Other = "event_type.x_21") %>%
+  rename(Post_EventType_Auto_Boat = "event_type.y_1") %>%
+  rename(Post_EventType_Business = "event_type.y_2") %>%
+  rename(Post_EventType_Charity = "event_type.y_3") %>%
+  rename(Post_EventType_Community = "event_type.y_4") %>%
+  rename(Post_EventType_Family_Education = "event_type.y_5") %>%
+  rename(Post_EventType_Fashion = "event_type.y_6") %>%
+  rename(Post_EventType_Food_Drink = "event_type.y_7") %>%
+  rename(Post_EventType_Government = "event_type.y_8") %>%
+  rename(Post_EventType_Health = "event_type.y_9") %>%
+  rename(Post_EventType_Hobbies = "event_type.y_10") %>%
+  rename(Post_EventType_Home_Lifestyle = "event_type.y_11") %>%
+  rename(Post_EventType_Music = "event_type.y_12") %>%
+  rename(Post_EventType_Arts = "event_type.y_13") %>%
+  rename(Post_EventType_Spirituality = "event_type.y_14") %>%
+  rename(Post_EventType_Science_Technology = "event_type.y_15") %>%
+  rename(Post_EventType_School = "event_type.y_16") %>%
+  rename(Post_EventType_Sports_Fitness = "event_type.y_17") %>%
+  rename(Post_EventType_Travel_Outdoors = "event_type.y_18") %>%
+  rename(Post_EventType_Holiday = "event_type.y_19") %>%
+  rename(Post_EventType_Film_Media = "event_type.y_20") %>%
+  rename(Post_EventType_Other = "event_type.y_21")
+
+```
+
+```{r}
+#remove unwanted variables
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  select(-c(active_passive_3_TEXT.y, gender_6_TEXT, who_attended_8_TEXT, who_attended_9_TEXT, active_passive_3_TEXT.x, sexual_orientation_8_TEXT, ethnicity_9_TEXT, event_type_21_TEXT.x, event_type_21_TEXT.y))
+
+```
+
+```{r}
+#change variable types
+
+eventbrite_cleaned$Pre_Survey_Date <- as.Date(eventbrite_cleaned$Pre_Survey_Date)
+eventbrite_cleaned$EventDate <- as.Date(eventbrite_cleaned$EventDate, "%m_%d_%Y")
+eventbrite_cleaned$Post_Survey_Date <- as.Date(eventbrite_cleaned$Post_Survey_Date)
+
+```
+
+```{r}
+#fixing variable values
+
+#Gender
+
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "1"] <- "0"
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "2"] <- "1"
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "3"] <- NA
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "4"] <- NA
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "5"] <- NA
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "6"] <- NA
+
+#CASP-19
+
+eventbrite_cleaned$CASP_19[eventbrite_cleaned$CASP_19 == "2"] <- "1"
+eventbrite_cleaned$CASP_19[eventbrite_cleaned$CASP_19 == "3"] <- "2"
+eventbrite_cleaned$CASP_19[eventbrite_cleaned$CASP_19 == "4"] <- "3"
+
+#SR Health
+
+eventbrite_cleaned$SR_Health[eventbrite_cleaned$SR_Health == "4"] <- "3"
+
+#Sexual Orientation
+
+eventbrite_cleaned$Sexual_Orientation[eventbrite_cleaned$Sexual_Orientation == c("1", "2", "3", "4", "5", "6", "8")] <- "0"
+eventbrite_cleaned$Sexual_Orientation[eventbrite_cleaned$Sexual_Orientation == "7"] <- "1"
+
+#Ethnicity
+
+eventbrite_cleaned$Ethnicity[eventbrite_cleaned$Ethnicity != "8"] <- "0"
+eventbrite_cleaned$Ethnicity[eventbrite_cleaned$Ethnicity == "8"] <- "1"
+
+#Age
+
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "1968"] <- "54"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "24 YEARS OLD"] <- "24"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "48 ans"] <- "48"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "Over 65"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "1996"] <- "26"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "2003"] <- "19"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "35-40"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "50-70"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "16/10/1983"] <- "39"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "90+"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "60+"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "18 years"] <- "18"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "22 years"] <- "22"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "37+"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "91 years"] <- "91"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "18+"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age == "Over 21"] <- "-99"
+eventbrite_cleaned$Age[eventbrite_cleaned$Age < 15] <- NA
+
+eventbrite_cleaned$Age <- as.numeric(eventbrite_cleaned$Age)
+
+#changing rare values to missing
+
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "Trans-Identify as Male"] <- NA
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "Trans-Identify as Female"] <- NA
+eventbrite_cleaned$Gender[eventbrite_cleaned$Gender == "Non-Binary"] <- NA
+
+#switching variables coded 1 and 2 to 0 and 1
+
+eventbrite_cleaned$Pre_Event_Occurance[eventbrite_cleaned$Pre_Event_Occurance == "1"] <- "0"
+eventbrite_cleaned$Pre_Event_Occurance[eventbrite_cleaned$Pre_Event_Occurance == "2"] <- "1"
+eventbrite_cleaned$Pre_Event_Attendance[eventbrite_cleaned$Pre_Event_Attendance == "1"] <- "0"
+eventbrite_cleaned$Pre_Event_Attendance[eventbrite_cleaned$Pre_Event_Attendance == "2"] <- "1"
+eventbrite_cleaned$Pre_Event_Alone[eventbrite_cleaned$Pre_Event_Alone == "1"] <- "0"
+eventbrite_cleaned$Pre_Event_Alone[eventbrite_cleaned$Pre_Event_Alone == "2"] <- "1"
+eventbrite_cleaned$Pre_Group_Variance[eventbrite_cleaned$Pre_Group_Variance == "1"] <- "0"
+eventbrite_cleaned$Pre_Group_Variance[eventbrite_cleaned$Pre_Group_Variance == "2"] <- "1"
+eventbrite_cleaned$Pre_Prefer_Alone[eventbrite_cleaned$Pre_Prefer_Alone == "1"] <- "0"
+eventbrite_cleaned$Pre_Prefer_Alone[eventbrite_cleaned$Pre_Prefer_Alone == "2"] <- "1"
+eventbrite_cleaned$Pre_Event_Pay[eventbrite_cleaned$Pre_Event_Pay == "1"] <- "0"
+eventbrite_cleaned$Pre_Event_Pay[eventbrite_cleaned$Pre_Event_Pay == "2"] <- "1"
+eventbrite_cleaned$SNI_5[eventbrite_cleaned$SNI_5 == "1"] <- "0"
+eventbrite_cleaned$SNI_5[eventbrite_cleaned$SNI_5 == "2"] <- "1"
+eventbrite_cleaned$Post_Event_Occurance[eventbrite_cleaned$Post_Event_Occurance == "1"] <- "0"
+eventbrite_cleaned$Post_Event_Occurance[eventbrite_cleaned$Post_Event_Occurance == "2"] <- "1"
+eventbrite_cleaned$Post_Event_Attendance[eventbrite_cleaned$Post_Event_Attendance == "1"] <- "0"
+eventbrite_cleaned$Post_Event_Attendance[eventbrite_cleaned$Post_Event_Attendance == "2"] <- "1"
+eventbrite_cleaned$Post_Event_Alone[eventbrite_cleaned$Post_Event_Alone == "1"] <- "0"
+eventbrite_cleaned$Post_Event_Alone[eventbrite_cleaned$Post_Event_Alone == "2"] <- "1"
+eventbrite_cleaned$Post_Group_Variance[eventbrite_cleaned$Post_Group_Variance == "1"] <- "0"
+eventbrite_cleaned$Post_Group_Variance[eventbrite_cleaned$Post_Group_Variance == "2"] <- "1"
+eventbrite_cleaned$Post_Prefer_Alone[eventbrite_cleaned$Post_Prefer_Alone == "1"] <- "0"
+eventbrite_cleaned$Post_Prefer_Alone[eventbrite_cleaned$Post_Prefer_Alone == "2"] <- "1"
+eventbrite_cleaned$Post_Event_Pay[eventbrite_cleaned$Post_Event_Pay == "1"] <- "0"
+eventbrite_cleaned$Post_Event_Pay[eventbrite_cleaned$Post_Event_Pay == "2"] <- "1"
+
+#switching values like "Don't Know" to missing so we can create ordinal variables
+
+eventbrite_cleaned$CGSS_1[eventbrite_cleaned$CGSS_1 == "3"] <- NA
+eventbrite_cleaned$CGSS_1[eventbrite_cleaned$CGSS_1 == "4"] <- NA
+eventbrite_cleaned$CGSS_1[eventbrite_cleaned$CGSS_1 == "2"] <- "0"
+eventbrite_cleaned$CGSS_2[eventbrite_cleaned$CGSS_2 == "6"] <- NA
+eventbrite_cleaned$CGSS_2[eventbrite_cleaned$CGSS_2 == "7"] <- NA
+eventbrite_cleaned$CGSS_3[eventbrite_cleaned$CGSS_3 == "6"] <- NA
+eventbrite_cleaned$CGSS_3[eventbrite_cleaned$CGSS_3 == "7"] <- NA
+eventbrite_cleaned$CGSS_4[eventbrite_cleaned$CGSS_4 == "6"] <- NA
+eventbrite_cleaned$CGSS_4[eventbrite_cleaned$CGSS_4 == "7"] <- NA
+eventbrite_cleaned$CGSS_5[eventbrite_cleaned$CGSS_5 == "6"] <- NA
+eventbrite_cleaned$CGSS_5[eventbrite_cleaned$CGSS_5 == "7"] <- NA
+eventbrite_cleaned$CGSS_6[eventbrite_cleaned$CGSS_6 == "4"] <- NA
+eventbrite_cleaned$CGSS_6[eventbrite_cleaned$CGSS_6 == "5"] <- NA
+eventbrite_cleaned$CGSS_7[eventbrite_cleaned$CGSS_7 == "4"] <- NA
+eventbrite_cleaned$CGSS_7[eventbrite_cleaned$CGSS_7 == "5"] <- NA
+eventbrite_cleaned$Politics[eventbrite_cleaned$Politics == "8"] <- NA
+
+#Active vs. Passive
+
+eventbrite_cleaned$Post_Active_Passive[eventbrite_cleaned$Post_Active_Passive == "3"] <- NA
+eventbrite_cleaned$Post_Active_Passive[eventbrite_cleaned$Post_Active_Passive == "1"] <- "0"
+eventbrite_cleaned$Post_Active_Passive[eventbrite_cleaned$Post_Active_Passive == "2"] <- "1"
+
+#Event Location
+
+eventbrite_cleaned$Post_Event_Location[eventbrite_cleaned$Post_Event_Location == "3"] <- NA
+eventbrite_cleaned$Post_Event_Location[eventbrite_cleaned$Post_Event_Location == "1"] <- "0"
+eventbrite_cleaned$Post_Event_Location[eventbrite_cleaned$Post_Event_Location == "2"] <- "1"
+
+#In-Person vs. Virtual
+
+eventbrite_cleaned$Post_Event_Virtual[eventbrite_cleaned$Post_Event_Virtual == "3"] <- NA
+eventbrite_cleaned$Post_Event_Virtual[eventbrite_cleaned$Post_Event_Virtual == "1"] <- "0"
+eventbrite_cleaned$Post_Event_Virtual[eventbrite_cleaned$Post_Event_Virtual == "2"] <- "1"
+
+#Relationship Status
+
+eventbrite_cleaned$Relationship_Status[eventbrite_cleaned$Relationship_Status == "2"] <- "1"
+eventbrite_cleaned$Relationship_Status[eventbrite_cleaned$Relationship_Status == "4"] <- "3"
+eventbrite_cleaned$Relationship_Status[eventbrite_cleaned$Relationship_Status == "6"] <- "7"
+
+#Income
+
+eventbrite_cleaned$Income[eventbrite_cleaned$Income == c("2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16")] <- "1"
+eventbrite_cleaned$Income[eventbrite_cleaned$Income == c("17", "18", "19", "20")] <- "2"
+eventbrite_cleaned$Income[eventbrite_cleaned$Income == c("21", "22", "23", "24", "25", "26")] <- "3"
+
+#Politics
+
+eventbrite_cleaned$Politics[eventbrite_cleaned$Politics == c("2", "3")] <- "1"
+eventbrite_cleaned$Politics[eventbrite_cleaned$Politics == "4"] <- "2"
+eventbrite_cleaned$Politics[eventbrite_cleaned$Politics == c("5", "6", "7")] <- "3"
+
+```
+
+```{r}
+#replacing -99 with NA to keep missing values consistent
+
+eventbrite_cleaned[eventbrite_cleaned == -99] <- NA
+
+```
+
+```{r}
+#creating scale scores for overall scales and sub-scales
+
+#SNI
+
+eventbrite_cleaned$SNI_1 <- as.numeric(eventbrite_cleaned$SNI_1)
+eventbrite_cleaned$SNI_2 <- as.numeric(eventbrite_cleaned$SNI_2)
+eventbrite_cleaned$SNI_3 <- as.numeric(eventbrite_cleaned$SNI_3)
+eventbrite_cleaned$SNI_4 <- as.numeric(eventbrite_cleaned$SNI_4)
+eventbrite_cleaned$SNI_5 <- as.numeric(eventbrite_cleaned$SNI_5)
+eventbrite_cleaned$SNI_6 <- as.numeric(eventbrite_cleaned$SNI_6)
+eventbrite_cleaned$SNI_7 <- as.numeric(eventbrite_cleaned$SNI_7)
+eventbrite_cleaned$SNI_8 <- as.numeric(eventbrite_cleaned$SNI_8)
+eventbrite_cleaned$SNI_9 <- as.numeric(eventbrite_cleaned$SNI_9)
+eventbrite_cleaned$SNI_10 <- as.numeric(eventbrite_cleaned$SNI_10)
+eventbrite_cleaned$SNI_11 <- as.numeric(eventbrite_cleaned$SNI_11)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(SNI_Composite = SNI_1 + SNI_2 + SNI_3 + SNI_4 + SNI_5 + SNI_6 + SNI_7 + SNI_8 + SNI_9 + SNI_10 + SNI_11)
+
+#CGSS
+
+eventbrite_cleaned$CGSS_1 <- as.numeric(eventbrite_cleaned$CGSS_1)
+eventbrite_cleaned$CGSS_2 <- as.numeric(eventbrite_cleaned$CGSS_2)
+eventbrite_cleaned$CGSS_3 <- as.numeric(eventbrite_cleaned$CGSS_3)
+eventbrite_cleaned$CGSS_4 <- as.numeric(eventbrite_cleaned$CGSS_4)
+eventbrite_cleaned$CGSS_5 <- as.numeric(eventbrite_cleaned$CGSS_5)
+eventbrite_cleaned$CGSS_6 <- as.numeric(eventbrite_cleaned$CGSS_6)
+eventbrite_cleaned$CGSS_7 <- as.numeric(eventbrite_cleaned$CGSS_7)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(CGSS_Composite = CGSS_1 + CGSS_2 + CGSS_3 + CGSS_4 + CGSS_5 + CGSS_6 + CGSS_7) 
+
+#UCLA Loneliness Scale
+
+eventbrite_cleaned$UCLA_1 <- as.numeric(eventbrite_cleaned$UCLA_1)
+eventbrite_cleaned$UCLA_2 <- as.numeric(eventbrite_cleaned$UCLA_2)
+eventbrite_cleaned$UCLA_3 <- as.numeric(eventbrite_cleaned$UCLA_3)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(UCLA_Composite = UCLA_1 + UCLA_2 + UCLA_3)
+
+#PHQ
+
+eventbrite_cleaned$PHQ_1 <- as.numeric(eventbrite_cleaned$PHQ_1)
+eventbrite_cleaned$PHQ_2 <- as.numeric(eventbrite_cleaned$PHQ_2)
+eventbrite_cleaned$PHQ_3 <- as.numeric(eventbrite_cleaned$PHQ_3)
+eventbrite_cleaned$PHQ_4 <- as.numeric(eventbrite_cleaned$PHQ_4)
+eventbrite_cleaned$PHQ_5 <- as.numeric(eventbrite_cleaned$PHQ_5)
+eventbrite_cleaned$PHQ_6 <- as.numeric(eventbrite_cleaned$PHQ_6)
+eventbrite_cleaned$PHQ_7 <- as.numeric(eventbrite_cleaned$PHQ_7)
+eventbrite_cleaned$PHQ_8 <- as.numeric(eventbrite_cleaned$PHQ_8)
+eventbrite_cleaned$PHQ_9 <- as.numeric(eventbrite_cleaned$PHQ_9)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(PHQ_Composite = PHQ_1 + PHQ_2 + PHQ_3 + PHQ_4 + PHQ_5 + PHQ_6 + PHQ_7 + PHQ_8 + PHQ_9)
+
+#Subjective Happiness Scale
+
+eventbrite_cleaned$Subj_Happy_1 <- as.numeric(eventbrite_cleaned$Subj_Happy_1)
+eventbrite_cleaned$Subj_Happy_2 <- as.numeric(eventbrite_cleaned$Subj_Happy_2)
+eventbrite_cleaned$Subj_Happy_3 <- as.numeric(eventbrite_cleaned$Subj_Happy_3)
+eventbrite_cleaned$Subj_Happy_4 <- as.numeric(eventbrite_cleaned$Subj_Happy_4)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Subj_Happy_Composite = (Subj_Happy_1 + Subj_Happy_2 + Subj_Happy_3 + Subj_Happy_4)/4)
+
+#Social Anxiety
+
+eventbrite_cleaned$Social_Anxiety_1 <- as.numeric(eventbrite_cleaned$Social_Anxiety_1)
+eventbrite_cleaned$Social_Anxiety_2 <- as.numeric(eventbrite_cleaned$Social_Anxiety_2)
+eventbrite_cleaned$Social_Anxiety_3 <- as.numeric(eventbrite_cleaned$Social_Anxiety_3)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Social_Anxiety_Composite = Social_Anxiety_1 + Social_Anxiety_2 + Social_Anxiety_3)
+
+#Life Satisfaction
+
+eventbrite_cleaned$Sat_Life_1 <- as.numeric(eventbrite_cleaned$Sat_Life_1)
+eventbrite_cleaned$Sat_Life_2 <- as.numeric(eventbrite_cleaned$Sat_Life_2)
+eventbrite_cleaned$Sat_Life_3 <- as.numeric(eventbrite_cleaned$Sat_Life_3)
+eventbrite_cleaned$Sat_Life_4 <- as.numeric(eventbrite_cleaned$Sat_Life_4)
+eventbrite_cleaned$Sat_Life_5 <- as.numeric(eventbrite_cleaned$Sat_Life_5)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Sat_Life_Composite = Sat_Life_1 + Sat_Life_2 + Sat_Life_3 + Sat_Life_4 + Sat_Life_5)
+
+#Enjoyment/Fun
+
+eventbrite_cleaned$Enjoyment <- as.numeric(eventbrite_cleaned$Enjoyment)
+eventbrite_cleaned$Fun <- as.numeric(eventbrite_cleaned$Fun)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Enjoyment_Fun_Composite = Enjoyment + Fun)
+
+#Social Connection
+
+eventbrite_cleaned$Social_Connection_1 <- as.numeric(eventbrite_cleaned$Social_Connection_1)
+eventbrite_cleaned$Social_Connection_2 <- as.numeric(eventbrite_cleaned$Social_Connection_2)
+eventbrite_cleaned$Social_Connection_3 <- as.numeric(eventbrite_cleaned$Social_Connection_3)
+eventbrite_cleaned$Social_Connection_4 <- as.numeric(eventbrite_cleaned$Social_Connection_4)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Social_Connection_2_Rev = 8 - Social_Connection_2)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Social_Connection_Composite = Social_Connection_1 + Social_Connection_2_Rev + Social_Connection_3 + Social_Connection_4)
+
+#Daily Depression
+
+eventbrite_cleaned$Daily_Depression_1 <- as.numeric(eventbrite_cleaned$Daily_Depression_1)
+eventbrite_cleaned$Daily_Depression_2 <- as.numeric(eventbrite_cleaned$Daily_Depression_2)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Daily_Depression_Composite = Daily_Depression_1 + Daily_Depression_2)
+
+#Daily Loneliness
+
+eventbrite_cleaned$Daily_Loneliness_1 <- as.numeric(eventbrite_cleaned$Daily_Loneliness_1)
+eventbrite_cleaned$Daily_Loneliness_2 <- as.numeric(eventbrite_cleaned$Daily_Loneliness_2)
+eventbrite_cleaned$Daily_Loneliness_3 <- as.numeric(eventbrite_cleaned$Daily_Loneliness_3)
+eventbrite_cleaned$Daily_Loneliness_4 <- as.numeric(eventbrite_cleaned$Daily_Loneliness_4)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Daily_Loneliness_Composite = Daily_Loneliness_1 + Daily_Loneliness_2 + Daily_Loneliness_3 + Daily_Loneliness_4)
+
+#Daily Social Anxiety
+
+eventbrite_cleaned$Daily_Social_Anxiety_1 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_1)
+eventbrite_cleaned$Daily_Social_Anxiety_2 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_2)
+eventbrite_cleaned$Daily_Social_Anxiety_3 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_3)
+eventbrite_cleaned$Daily_Social_Anxiety_4 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_4)
+eventbrite_cleaned$Daily_Social_Anxiety_5 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_5)
+eventbrite_cleaned$Daily_Social_Anxiety_6 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_6)
+eventbrite_cleaned$Daily_Social_Anxiety_7 <- as.numeric(eventbrite_cleaned$Daily_Social_Anxiety_7)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Daily_Social_Anxiety_Composite = Daily_Social_Anxiety_1 + Daily_Social_Anxiety_2 + Daily_Social_Anxiety_3 + Daily_Social_Anxiety_4 + Daily_Social_Anxiety_5 + Daily_Social_Anxiety_6 + Daily_Social_Anxiety_7)
+
+#Daily Social Connection
+
+eventbrite_cleaned$Daily_Social_Con_1 <- as.numeric(eventbrite_cleaned$Daily_Social_Con_1)
+eventbrite_cleaned$Daily_Social_Con_2 <- as.numeric(eventbrite_cleaned$Daily_Social_Con_2)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Daily_Social_Con_Composite = Daily_Social_Con_1 + Daily_Social_Con_2)
+
+#Personality BFI
+
+eventbrite_cleaned$Personality_BFI_1 <- as.numeric(eventbrite_cleaned$Personality_BFI_1)
+eventbrite_cleaned$Personality_BFI_2 <- as.numeric(eventbrite_cleaned$Personality_BFI_2)
+eventbrite_cleaned$Personality_BFI_3 <- as.numeric(eventbrite_cleaned$Personality_BFI_3)
+eventbrite_cleaned$Personality_BFI_4 <- as.numeric(eventbrite_cleaned$Personality_BFI_4)
+eventbrite_cleaned$Personality_BFI_5 <- as.numeric(eventbrite_cleaned$Personality_BFI_5)
+eventbrite_cleaned$Personality_BFI_6 <- as.numeric(eventbrite_cleaned$Personality_BFI_6)
+eventbrite_cleaned$Personality_BFI_7 <- as.numeric(eventbrite_cleaned$Personality_BFI_7)
+eventbrite_cleaned$Personality_BFI_8 <- as.numeric(eventbrite_cleaned$Personality_BFI_8)
+eventbrite_cleaned$Personality_BFI_9 <- as.numeric(eventbrite_cleaned$Personality_BFI_9)
+eventbrite_cleaned$Personality_BFI_10 <- as.numeric(eventbrite_cleaned$Personality_BFI_10)
+eventbrite_cleaned$Personality_BFI_11 <- as.numeric(eventbrite_cleaned$Personality_BFI_11)
+eventbrite_cleaned$Personality_BFI_12 <- as.numeric(eventbrite_cleaned$Personality_BFI_12)
+eventbrite_cleaned$Personality_BFI_13 <- as.numeric(eventbrite_cleaned$Personality_BFI_13)
+eventbrite_cleaned$Personality_BFI_14 <- as.numeric(eventbrite_cleaned$Personality_BFI_14)
+eventbrite_cleaned$Personality_BFI_15 <- as.numeric(eventbrite_cleaned$Personality_BFI_15)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Personality_BFI_1_Rev = 8 - Personality_BFI_1) %>%
+  mutate(Personality_BFI_5_Rev = 8 - Personality_BFI_5) %>%
+  mutate(Personality_BFI_7_Rev = 8 - Personality_BFI_7) %>%
+  mutate(Personality_BFI_8_Rev = 8 - Personality_BFI_8) %>%
+  mutate(Personality_BFI_12_Rev = 8 - Personality_BFI_12) %>%
+  mutate(Personality_BFI_14_Rev = 8 - Personality_BFI_14)
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(Personality_BFI_Extraversion = Personality_BFI_1_Rev + Personality_BFI_2 + Personality_BFI_3) %>%
+  mutate(Personality_BFI_Agreeableness = Personality_BFI_4 + Personality_BFI_5_Rev + Personality_BFI_6) %>%
+  mutate(Personality_BFI_Conscientiousness = Personality_BFI_7_Rev + Personality_BFI_8_Rev + Personality_BFI_9) %>%
+  mutate(Personality_BFI_Neuroticism = Personality_BFI_10 + Personality_BFI_11 + Personality_BFI_12_Rev) %>%
+  mutate(Personality_BFI_Openness = Personality_BFI_13 + Personality_BFI_14_Rev + Personality_BFI_15)
+
+```
+
+```{r}
+#create new date variables
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  mutate(PreSurvey_To_Event_Days = (as.numeric(EventDate)) - (as.numeric(Pre_Survey_Date)), Event_To_PostSurvey_Days = (as.numeric(Post_Survey_Date)) - (as.numeric(EventDate)))
+
+```
+
+```{r}
+#changing variable types and adding value labels
+
+eventbrite_cleaned$Gender <- factor(eventbrite_cleaned$Gender, levels = c("0", "1"), labels = c("Woman", "Man"))
+eventbrite_cleaned$Pre_Event_Occurance <- factor(eventbrite_cleaned$Pre_Event_Occurance, levels = c("0", "1"), labels = c("One-Time Event", "Recurring"))
+eventbrite_cleaned$Pre_Event_Attendance <- factor(eventbrite_cleaned$Pre_Event_Attendance, levels = c("0", "1"), labels = c("Yes, this will be the first time I attend this event", "No, I've already attended this event at least once previously"))
+eventbrite_cleaned$Pre_Event_Alone <- factor(eventbrite_cleaned$Pre_Event_Alone, levels = c("0", "1"), labels = c("Yes, I will be attending with one or more other people", "No, I will be attending alone"))
+eventbrite_cleaned$Pre_Group_Amount <- factor(eventbrite_cleaned$Pre_Group_Amount, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("1 Other Person", "2-4 Other People", "5-7 Other People", "8-10 Other People", "More Than 10 Other People"))
+eventbrite_cleaned$Pre_Group_Who <- factor(eventbrite_cleaned$Pre_Group_Who, levels = c("1", "2", "3", "4", "5", "6", "7", "8"), labels = c("Acquaintance(s)", "Friend(s)", "Coworker(s)", "Family Member(s)", "Schoolmate(s)", "Significant Other/Partner/Spouse", "Date/Romantic Interest", "Other"))
+eventbrite_cleaned$Pre_Group_Variance <- factor(eventbrite_cleaned$Pre_Group_Variance, levels = c("0", "1"), labels = c("Yes, I attend this event with generally the same group of people", "No, the group of people who attend varies quite a bit"))
+eventbrite_cleaned$Pre_Prefer_Alone <- factor(eventbrite_cleaned$Pre_Prefer_Alone, levels = c("0", "1"), labels = c("Yes, I prefer to attend alone", "No, I prefer not to attend alone"))
+eventbrite_cleaned$Pre_Active_Passive <- factor(eventbrite_cleaned$Pre_Active_Passive, levels = c("1", "2", "3"), labels = c("Active Participation", "Passive Participation", "Other"))
+eventbrite_cleaned$Pre_Event_Location <- factor(eventbrite_cleaned$Pre_Event_Location, levels = c("1", "2", "3"), labels = c("Indoors", "Outdoors", "Both Indoors and Outdoors"))
+eventbrite_cleaned$Pre_Event_Virtual <- factor(eventbrite_cleaned$Pre_Event_Virtual, levels = c("1", "2", "3"), labels = c("In-Person", "Virtual", "Hybrid"))
+eventbrite_cleaned$Pre_Event_Pay <- factor(eventbrite_cleaned$Pre_Event_Pay, levels = c("0", "1"), labels = c("Paid", "Free"))
+eventbrite_cleaned$SNI_1 <- factor(eventbrite_cleaned$SNI_1, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_2 <- factor(eventbrite_cleaned$SNI_2, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_3 <- factor(eventbrite_cleaned$SNI_3, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_4 <- factor(eventbrite_cleaned$SNI_4, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_5 <- factor(eventbrite_cleaned$SNI_5, order = TRUE, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$SNI_6 <- factor(eventbrite_cleaned$SNI_6, order = TRUE, levels = c("0", "1", "2", "3", "4", "5"), labels = c("Never or Almost Never", "Once or Twice a Year", "Every Few Months", "Once or Twice a Month", "Once a Week", "More Than Once a Week"))
+eventbrite_cleaned$SNI_7 <- factor(eventbrite_cleaned$SNI_7, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_8 <- factor(eventbrite_cleaned$SNI_8, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_9 <- factor(eventbrite_cleaned$SNI_9, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_10 <- factor(eventbrite_cleaned$SNI_10, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None", "1 or 2", "3 to 5", "6 to 9", "10 or More"))
+eventbrite_cleaned$SNI_11 <- factor(eventbrite_cleaned$SNI_11, order = TRUE, levels = c("0", "1", "2", "3", "4"), labels = c("None of the Time", "A Little of the Time", "Some of the Time", "Most of the Time", "All of the Time"))
+eventbrite_cleaned$CGSS_1 <- factor(eventbrite_cleaned$CGSS_1, order = TRUE, levels = c("0", "1"), labels = c("You Cannot Be Too Careful in Dealing with People", "Most People Can Be Trusted"))
+eventbrite_cleaned$CGSS_2 <- factor(eventbrite_cleaned$CGSS_2, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Cannot Be Trusted At All", "2", "3", "4", "Can Be Trusted a Lot"))
+eventbrite_cleaned$CGSS_3 <- factor(eventbrite_cleaned$CGSS_3, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Cannot Be Trusted At All", "2", "3", "4", "Can Be Trusted a Lot"))
+eventbrite_cleaned$CGSS_4 <- factor(eventbrite_cleaned$CGSS_4, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Cannot Be Trusted At All", "2", "3", "4", "Can Be Trusted a Lot"))
+eventbrite_cleaned$CGSS_5 <- factor(eventbrite_cleaned$CGSS_5, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Cannot Be Trusted At All", "2", "3", "4", "Can Be Trusted a Lot"))
+eventbrite_cleaned$CGSS_6 <- factor(eventbrite_cleaned$CGSS_6, order = TRUE, levels = c("1", "2", "3"), labels = c("Very Likely", "Somewhat Likely", "Not Likely At All"))
+eventbrite_cleaned$CGSS_7 <- factor(eventbrite_cleaned$CGSS_7, order = TRUE, levels = c("1", "2", "3"), labels = c("Very Likely", "Somewhat Likely", "Not Likely At All"))
+eventbrite_cleaned$UCLA_1 <- factor(eventbrite_cleaned$UCLA_1, order = TRUE, levels = c("1", "2", "3"), labels = c("Hardly Ever", "Some of the Time", "Often"))
+eventbrite_cleaned$UCLA_2 <- factor(eventbrite_cleaned$UCLA_2, order = TRUE, levels = c("1", "2", "3"), labels = c("Hardly Ever", "Some of the Time", "Often"))
+eventbrite_cleaned$UCLA_3 <- factor(eventbrite_cleaned$UCLA_3, order = TRUE, levels = c("1", "2", "3"), labels = c("Hardly Ever", "Some of the Time", "Often"))
+eventbrite_cleaned$CASP_19 <- factor(eventbrite_cleaned$CASP_19, order = TRUE, levels = c("1", "2", "3"), labels = c("Never or 2", "3", "Often"))
+eventbrite_cleaned$SR_Health <- factor(eventbrite_cleaned$SR_Health, order = TRUE, levels = c("3", "2", "1"), labels = c("Poor or Fair", "Good", "Excellent"))
+eventbrite_cleaned$PHQ_1 <- factor(eventbrite_cleaned$PHQ_1, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_2 <- factor(eventbrite_cleaned$PHQ_2, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_3 <- factor(eventbrite_cleaned$PHQ_3, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_4 <- factor(eventbrite_cleaned$PHQ_4, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_5 <- factor(eventbrite_cleaned$PHQ_5, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_6 <- factor(eventbrite_cleaned$PHQ_6, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_7 <- factor(eventbrite_cleaned$PHQ_7, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_8 <- factor(eventbrite_cleaned$PHQ_8, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not at All", "Several Days", "More Than Half the Days", "Nearly Every Day"))
+eventbrite_cleaned$PHQ_9 <- factor(eventbrite_cleaned$PHQ_9, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("Not Difficult at All", "Somewhat Difficult", "Very Difficult", "Extremely Difficult"))
+eventbrite_cleaned$Subj_Happy_1 <- factor(eventbrite_cleaned$Subj_Happy_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not a Very Happy Person", "2", "3", "4", "5", "6", "A Very Happy Person"))
+eventbrite_cleaned$Subj_Happy_2 <- factor(eventbrite_cleaned$Subj_Happy_2, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Less Happy", "2", "3", "4", "5", "6", "More Happy"))
+eventbrite_cleaned$Subj_Happy_3 <- factor(eventbrite_cleaned$Subj_Happy_3, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "A Great Deal"))
+eventbrite_cleaned$Subj_Happy_4 <- factor(eventbrite_cleaned$Subj_Happy_4, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "A Great Deal"))
+eventbrite_cleaned$Social_Anxiety_1 <- factor(eventbrite_cleaned$Social_Anxiety_1, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Not at All", "A Little Bit", "Somewhat", "Very Much", "Extremely"))
+eventbrite_cleaned$Social_Anxiety_2 <- factor(eventbrite_cleaned$Social_Anxiety_2, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Not at All", "A Little Bit", "Somewhat", "Very Much", "Extremely"))
+eventbrite_cleaned$Social_Anxiety_3 <- factor(eventbrite_cleaned$Social_Anxiety_3, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Not at All", "A Little Bit", "Somewhat", "Very Much", "Extremely"))
+eventbrite_cleaned$Sat_Life_1 <- factor(eventbrite_cleaned$Sat_Life_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "Disagree", "Slightly Disagree", "Neither Agree Nor Disagree", "Slightly Agree", "Agree", "Strongly Agree"))
+eventbrite_cleaned$Sat_Life_2 <- factor(eventbrite_cleaned$Sat_Life_2, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "Disagree", "Slightly Disagree", "Neither Agree Nor Disagree", "Slightly Agree", "Agree", "Strongly Agree"))
+eventbrite_cleaned$Sat_Life_3 <- factor(eventbrite_cleaned$Sat_Life_3, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "Disagree", "Slightly Disagree", "Neither Agree Nor Disagree", "Slightly Agree", "Agree", "Strongly Agree"))
+eventbrite_cleaned$Sat_Life_4 <- factor(eventbrite_cleaned$Sat_Life_4, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "Disagree", "Slightly Disagree", "Neither Agree Nor Disagree", "Slightly Agree", "Agree", "Strongly Agree"))
+eventbrite_cleaned$Sat_Life_5 <- factor(eventbrite_cleaned$Sat_Life_5, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "Disagree", "Slightly Disagree", "Neither Agree Nor Disagree", "Slightly Agree", "Agree", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_1 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_2 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_3 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_4 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_5 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_6 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_7 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_8 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_9 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_10 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_11 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_12 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_13 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_14 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Personality_BFI_15 <- factor(eventbrite_cleaned$Personality_BFI_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Strongly Disagree", "2", "3", "4", "5", "6", "Strongly Agree"))
+eventbrite_cleaned$Sexual_Orientation <- factor(eventbrite_cleaned$Sexual_Orientation, levels = c("0", "1"), labels = c("Other", "Straight/Heterosexual"))
+eventbrite_cleaned$Ethnicity <- factor(eventbrite_cleaned$Ethnicity, levels = c("0", "1"), labels = c("Other", "White"))
+eventbrite_cleaned$Relationship_Status <- factor(eventbrite_cleaned$Relationship_Status, levels = c("1", "3", "5", "7"), labels = c("Single", "Long-Term Relationship", "Married", "Other"))
+eventbrite_cleaned$Subj_SES <- factor(eventbrite_cleaned$Subj_SES, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"), labels = c("Bottom of the Ladder", "2", "3", "4", "5", "6", "7", "8", "9", "Top of the Ladder"))
+eventbrite_cleaned$Income <- factor(eventbrite_cleaned$Income, order = TRUE, levels = c("1", "2", "3"), labels = c("Under $35,000", "$35,000 to $74,999", "$75,000 or Over"))
+eventbrite_cleaned$Politics <- factor(eventbrite_cleaned$Politics, order = TRUE, levels = c("1", "2", "3"), labels = c("Liberal", "Moderate", "Conservative"))
+eventbrite_cleaned$Pre_Attention_Check <- factor(eventbrite_cleaned$Pre_Attention_Check, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("No Attention", "Very Little Attention", "Moderate Attention", "Very Close Attention"))
+eventbrite_cleaned$Post_Event_Occurance <- factor(eventbrite_cleaned$Post_Event_Occurance, levels = c("0", "1"), labels = c("One-Time Event", "Recurring"))
+eventbrite_cleaned$Post_Event_Attendance <- factor(eventbrite_cleaned$Post_Event_Attendance, levels = c("0", "1"), labels = c("Yes, was the first time I attended this event", "No, I already attended this event at least once previously"))
+eventbrite_cleaned$Post_Event_Alone <- factor(eventbrite_cleaned$Post_Event_Alone, levels = c("0", "1"), labels = c("Yes, I attended with one or more other people", "No, I attended alone"))
+eventbrite_cleaned$Post_Group_Amount <- factor(eventbrite_cleaned$Post_Group_Amount, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("1 Other Person", "2-4 Other People", "5-7 Other People", "8-10 Other People", "More Than 10 Other People"))
+eventbrite_cleaned$Post_Group_Who <- factor(eventbrite_cleaned$Post_Group_Who, levels = c("1", "2", "3", "4", "5", "6", "7", "8"), labels = c("Acquaintance(s)", "Friend(s)", "Coworker(s)", "Family Member(s)", "Schoolmate(s)", "Significant Other/Partner/Spouse", "Date/Romantic Interest", "Other"))
+eventbrite_cleaned$Post_Group_Variance <- factor(eventbrite_cleaned$Post_Group_Variance, levels = c("0", "1"), labels = c("Yes, I attend this event with generally the same group of people", "No, the group of people who attend varies quite a bit"))
+eventbrite_cleaned$Post_Prefer_Alone <- factor(eventbrite_cleaned$Post_Prefer_Alone, levels = c("0", "1"), labels = c("Yes, I prefered to attend alone", "No, I prefered not to attend alone"))
+eventbrite_cleaned$Post_Active_Passive <- factor(eventbrite_cleaned$Post_Active_Passive, levels = c("0", "1"), labels = c("Active Participation", "Passive Participation"))
+eventbrite_cleaned$Post_Event_Location <- factor(eventbrite_cleaned$Post_Event_Location, levels = c("0", "1"), labels = c("Indoors", "Outdoors"))
+eventbrite_cleaned$Post_Event_Virtual <- factor(eventbrite_cleaned$Post_Event_Virtual, levels = c("0", "1"), labels = c("In-Person", "Virtual"))
+eventbrite_cleaned$Post_Event_Pay <- factor(eventbrite_cleaned$Post_Event_Pay, levels = c("0", "1"), labels = c("Paid", "Free"))
+eventbrite_cleaned$Enjoyment <- factor(eventbrite_cleaned$Enjoyment, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Extremely"))
+eventbrite_cleaned$Fun <- factor(eventbrite_cleaned$Fun, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("None at All", "2", "3", "4", "5", "6", "A Lot"))
+eventbrite_cleaned$Social_Connection_1 <- factor(eventbrite_cleaned$Social_Connection_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Extremely"))
+eventbrite_cleaned$Social_Connection_2 <- factor(eventbrite_cleaned$Social_Connection_2, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Extremely"))
+eventbrite_cleaned$Social_Connection_3 <- factor(eventbrite_cleaned$Social_Connection_3, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Extremely"))
+eventbrite_cleaned$Social_Connection_4 <- factor(eventbrite_cleaned$Social_Connection_4, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Extremely"))
+eventbrite_cleaned$Daily_Depression_1 <- factor(eventbrite_cleaned$Daily_Depression_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Very Much"))
+eventbrite_cleaned$Daily_Depression_2 <- factor(eventbrite_cleaned$Daily_Depression_2, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Very Much"))
+eventbrite_cleaned$Daily_Loneliness_1 <- factor(eventbrite_cleaned$Daily_Loneliness_1, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Do Not Agree at All", "2", "3", "4", "Totally Agree"))
+eventbrite_cleaned$Daily_Loneliness_2 <- factor(eventbrite_cleaned$Daily_Loneliness_2, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Do Not Agree at All", "2", "3", "4", "Totally Agree"))
+eventbrite_cleaned$Daily_Loneliness_3 <- factor(eventbrite_cleaned$Daily_Loneliness_3, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Do Not Agree at All", "2", "3", "4", "Totally Agree"))
+eventbrite_cleaned$Daily_Loneliness_4 <- factor(eventbrite_cleaned$Daily_Loneliness_4, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Do Not Agree at All", "2", "3", "4", "Totally Agree"))
+eventbrite_cleaned$Daily_Social_Anxiety_1 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_1, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Social_Anxiety_2 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_2, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Social_Anxiety_3 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_3, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Social_Anxiety_4 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_4, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Social_Anxiety_5 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_5, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Social_Anxiety_6 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_6, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Social_Anxiety_7 <- factor(eventbrite_cleaned$Daily_Social_Anxiety_7, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Very Slightly/Not at All", "A Little", "Moderately", "Very Much", "Extremely"))
+eventbrite_cleaned$Daily_Gen_Anxiety <- factor(eventbrite_cleaned$Daily_Gen_Anxiety, order = TRUE, levels = c("1", "2", "3", "4", "5"), labels = c("Not Anxious at All", "2", "3", "4", "Anxious"))
+eventbrite_cleaned$Daily_Social_Con_1 <- factor(eventbrite_cleaned$Daily_Social_Con_1, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Very Much"))
+eventbrite_cleaned$Daily_Social_Con_2 <- factor(eventbrite_cleaned$Daily_Social_Con_2, order = TRUE, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = c("Not at All", "2", "3", "4", "5", "6", "Very Much"))
+eventbrite_cleaned$Post_Attention_Check <- factor(eventbrite_cleaned$Post_Attention_Check, order = TRUE, levels = c("1", "2", "3", "4"), labels = c("No Attention", "Very Little Attention", "Moderate Attention", "Very Close Attention"))
+eventbrite_cleaned$Pre_EventType_Auto_Boat <- factor(eventbrite_cleaned$Pre_EventType_Auto_Boat, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Business <- factor(eventbrite_cleaned$Pre_EventType_Business, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Charity <- factor(eventbrite_cleaned$Pre_EventType_Charity, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Community <- factor(eventbrite_cleaned$Pre_EventType_Community, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Family_Education <- factor(eventbrite_cleaned$Pre_EventType_Family_Education, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Fashion <- factor(eventbrite_cleaned$Pre_EventType_Fashion, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Food_Drink <- factor(eventbrite_cleaned$Pre_EventType_Food_Drink, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Government <- factor(eventbrite_cleaned$Pre_EventType_Government, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Health <- factor(eventbrite_cleaned$Pre_EventType_Health, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Hobbies <- factor(eventbrite_cleaned$Pre_EventType_Hobbies, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Home_Lifestyle <- factor(eventbrite_cleaned$Pre_EventType_Home_Lifestyle, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Music <- factor(eventbrite_cleaned$Pre_EventType_Music, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Arts <- factor(eventbrite_cleaned$Pre_EventType_Arts, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Spirituality <- factor(eventbrite_cleaned$Pre_EventType_Spirituality, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Science_Technology <- factor(eventbrite_cleaned$Pre_EventType_Science_Technology, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_School <- factor(eventbrite_cleaned$Pre_EventType_School, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Sports_Fitness <- factor(eventbrite_cleaned$Pre_EventType_Sports_Fitness, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Travel_Outdoors <- factor(eventbrite_cleaned$Pre_EventType_Travel_Outdoors, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Holiday <- factor(eventbrite_cleaned$Pre_EventType_Holiday, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Film_Media <- factor(eventbrite_cleaned$Pre_EventType_Film_Media, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Pre_EventType_Other <- factor(eventbrite_cleaned$Pre_EventType_Other, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Auto_Boat <- factor(eventbrite_cleaned$Post_EventType_Auto_Boat, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Business <- factor(eventbrite_cleaned$Post_EventType_Business, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Charity <- factor(eventbrite_cleaned$Post_EventType_Charity, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Community <- factor(eventbrite_cleaned$Post_EventType_Community, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Family_Education <- factor(eventbrite_cleaned$Post_EventType_Family_Education, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Fashion <- factor(eventbrite_cleaned$Post_EventType_Fashion, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Food_Drink <- factor(eventbrite_cleaned$Post_EventType_Food_Drink, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Government <- factor(eventbrite_cleaned$Post_EventType_Government, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Health <- factor(eventbrite_cleaned$Post_EventType_Health, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Hobbies <- factor(eventbrite_cleaned$Post_EventType_Hobbies, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Home_Lifestyle <- factor(eventbrite_cleaned$Post_EventType_Home_Lifestyle, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Music <- factor(eventbrite_cleaned$Post_EventType_Music, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Arts <- factor(eventbrite_cleaned$Post_EventType_Arts, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Spirituality <- factor(eventbrite_cleaned$Post_EventType_Spirituality, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Science_Technology <- factor(eventbrite_cleaned$Post_EventType_Science_Technology, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_School <- factor(eventbrite_cleaned$Post_EventType_School, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Sports_Fitness <- factor(eventbrite_cleaned$Post_EventType_Sports_Fitness, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Travel_Outdoors <- factor(eventbrite_cleaned$Post_EventType_Travel_Outdoors, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Holiday <- factor(eventbrite_cleaned$Post_EventType_Holiday, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Film_Media <- factor(eventbrite_cleaned$Post_EventType_Film_Media, levels = c("0", "1"), labels = c("No", "Yes"))
+eventbrite_cleaned$Post_EventType_Other <- factor(eventbrite_cleaned$Post_EventType_Other, levels = c("0", "1"), labels = c("No", "Yes"))
+
+```
+
+```{r}
+#ordered the variables
+
+eventbrite_cleaned <- relocate(eventbrite_cleaned, c(121:141), .after = Pre_Event_Pay)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, c(142:162), .after = Post_Event_Pay)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 163, .after = SNI_11)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 164, .after = CGSS_7)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 165, .after = UCLA_3)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 166, .after = PHQ_9)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 167, .after = Subj_Happy_4)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 168, .after = Social_Anxiety_3)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 169, .after = Sat_Life_5)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 170, .after = Fun)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 171:172, .after = Social_Connection_4)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 173, .after = Daily_Depression_2)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 174, .after = Daily_Loneliness_4)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 175, .after = Daily_Social_Anxiety_7)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 176, .after = Daily_Social_Con_2)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 177:187, .after = Personality_BFI_15)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 188, .after = EventDate)
+eventbrite_cleaned <- relocate(eventbrite_cleaned, 189, .after = Post_Survey_Date)
+
+```
+
+```{r}
+#adding variable name labels
+
+var_label(eventbrite_cleaned) <- list(Email = "Email", Pre_Survey_Date = "Date Pre-Event Survey Was Taken", Event = "Event Attended", EventDate = "Date of Event Attended", PreSurvey_To_Event_Days = "Number of Days Between the Pre-Event Survey and the Event Itself", Age = "Age of Participant", Gender = "Gender of Participant", Pre_Event_Occurance = "Will This Event Be One Time or Recurring?", Pre_Event_Attendance = "Will This Be Your First Time Attending This Event?", Pre_Event_Alone = "Will You Be Attending This Event With Other People or Alone?", Pre_Group_Amount = "How Many People Will You Be Attending This Event With?", Pre_Group_Who = "Who Will You Be Attending This Event With?", Pre_Group_Variance = "Do You Typically Attend This Event With the Same Number of People?", Pre_Prefer_Alone = "Do You Prefer to Attend This Event Alone?", Pre_Active_Passive = "Will This Event Be Active or Passive?", Pre_Event_Location = "Will This Event Be Indoors, Outdoors, or Both?", Pre_Event_Virtual = "Will This Event Be In-Person, Virtual, or Hybrid?", Pre_Event_Pay = "Do You Have To Pay To Attend This Event?", Pre_EventType_Auto_Boat = "Auto, Boat, and Air Event", Pre_EventType_Business = "Business Event", Pre_EventType_Charity = "Charity and Causes Event", Pre_EventType_Community = "Community Event", Pre_EventType_Family_Education = "Family & Education Event", Pre_EventType_Fashion = "Fashion Event", Pre_EventType_Food_Drink = "Food & Drink Event", Pre_EventType_Government = "Government Event", Pre_EventType_Health = "Health Event", Pre_EventType_Hobbies = "Hobby-Related Event", Pre_EventType_Home_Lifestyle = "Home & Lifestyle Event", Pre_EventType_Music = "Music Event", Pre_EventType_Arts = "Performing and Visual Arts Event", Pre_EventType_Spirituality = "Spirituality Event", Pre_EventType_Science_Technology = "Science & Technology Event", Pre_EventType_School = "School Activities Event", Pre_EventType_Sports_Fitness = "Sports & Fitness Event", Pre_EventType_Travel_Outdoors = "Travel & Outdoors Event", Pre_EventType_Holiday = "Holiday Event", Pre_EventType_Film_Media = "Film & Media Event", Pre_EventType_Other = "Other Type of Event", SNI_1 = "Social Network Index - Question 1: How many close friends do you have, people that you feel at ease with, or can talk to about private matters?", SNI_2 = "Social Network Index - Question 2: How many of these close friends do you see at least once a month?", SNI_3 = "Social Network Index - Question 3: How many relatives do you have, people that you feel at ease with, can talk to about private matters?", SNI_4 = "Social Network Index - Question 4: How many of these relatives do you see at least once a month?", SNI_5 = "Social Network Index - Question 5: Do you participate in any groups such as a senior center, social or work group, religious-connected group, self-help group, charity, public service, or community group?", SNI_6 = "Social Network Index - Question 6: About how often do you go to religious meetings or services?", SNI_7 = "Social Network Index - Question 7: How many people are available to you whom you can count on to listen to you when you need to talk?", SNI_8 = "Social Network Index - Question 8: How many people are available to give you good advice about a problem?", SNI_9 = "Social Network Index - Question 9: How many people are available to you who show you love and affection?", SNI_10 = "Social Network Index - Question 10: How many people can you count on to provide you with emotional support (talking over problems or helping you make a difficult decision)?", SNI_11 = "Social Network Index - Question 11: Do you have as much contact as you would like with someone you feel close to, someone in whom you can trust and confide?")
+
+```
+
+```{r}
+#adding more variable name labels - you apparently cannot add too many at once
+
+var_label(eventbrite_cleaned) <- list(CGSS_1 = "Canadian General Social Survey - Question 1: Generally speaking, would you say that most people can be trusted or that you cannot be too careful in dealing with people?", CGSS_2 = "Canadian General Social Survey - Question 2: How much do you trust people in your family?", CGSS_3 = "Canadian General Social Survey - Question 3: How much do you trust people in your neighborhood?", CGSS_4 = "Canadian General Social Survey - Question 4: How much do you trust people you work or go to school with?", CGSS_5 = "Canadian General Social Survey - Question 5: How much do you trust strangers?", CGSS_6 = "Canadian General Social Survey - Question 6: If you lost a purse or wallet with two hundred dollars, how likely is it to be returned with the money still in it by someone who lives close by?", CGSS_7 = "Canadian General Social Survey - Question 7: If you lost a purse or wallet with two hundred dollars, how likely is it to be returned with the money still in it by someone who lives close by?", UCLA_1 = "UCLA Loneliness Scale - Question 1: How often do you feel that you lack companionship?", UCLA_2 = "UCLA Loneliness Scale - Question 2: How often do you feel left out?", UCLA_3 = "UCLA Loneliness Scale - Question 3: How often do you feel isolated from others?")
+                                      
+var_label(eventbrite_cleaned) <- list(CASP_19 = "Sense of Purpose - Pleasure Scale: How often do you feel that your life has meaning?", SR_Health = "Self-Rated Health: Please rate your health", PHQ_1 = "Depression - Patient Health Questionnaire-9 - Question 1: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Little interest or pleasure in doing things", PHQ_2 = "Depression - Patient Health Questionnaire-9 - Question 2: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Feeling down, depressed, or hopeless", PHQ_3 = "Depression - Patient Health Questionnaire-9 - Question 3: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Trouble falling asleep or staying asleep, or sleeping too much", PHQ_4 = "Depression - Patient Health Questionnaire-9 - Question 4: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Feeling tired or having little energy")
+
+var_label(eventbrite_cleaned) <- list(PHQ_5 = "Depression - Patient Health Questionnaire-9 - Question 5: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Poor appetite or overeating", PHQ_6 = "Depression - Patient Health Questionnaire-9 - Question 6: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Feeling bad about yourself - or that you are a failure or have let yourself or your family down", PHQ_7 = "Depression - Patient Health Questionnaire-9 - Question 7: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Trouble concentrating on things, such as reading the newspaper or watching television", PHQ_8 = "Depression - Patient Health Questionnaire-9 - Question 8: Over the last 2 weeks, how often have you been bothered by any of the following problems? - Moving or speaking so slowly that other people could have noticed? Or the opposite being so fidgety or restless that you have been moving around a lot more than usual", PHQ_9 = "Depression - Patient Health Questionnaire-9 - Question 9: If you checked off any problems, how difficult have these problems made it for you to do your work, take care of things at home, or get along with other people?")
+
+var_label(eventbrite_cleaned) <- list(Subj_Happy_1 = "Subjective Happiness Scale - Item 1: In general, I consider myself...", Subj_Happy_2 = "Subjective Happiness Scale - Item 2: Compared to most of my peers, I consider myself...", Subj_Happy_3 = "Subjective Happiness Scale - Item 3: Some people are generally very happy. They enjoy life regardless of what is going on, getting the most out of everything. To what extent does this characterization describe you?", Subj_Happy_4 = "Subjective Happiness Scale - Item 4: Some people are generally not very happy. Although they are not depressed, they never seem as happy as they might be. To what extent does this characterization describe you?", Social_Anxiety_1 = "The Social Phobia Inventory - Mini SPIN - Item 1: Please indicate how much you were affected by each item during the past week. - Fear of embarrassment caused me to avoid doing things or speaking to people.", Social_Anxiety_2 = "The Social Phobia Inventory - Mini SPIN - Item 2: Please indicate how much you were affected by each item during the past week. - I avoided activities in which I was the center of attention.", Social_Anxiety_3 = "The Social Phobia Inventory - Mini SPIN - Item 3: Please indicate how much you were affected by each item during the past week. - Being embarrassed or looking stupid were among my worse fears.", Sat_Life_1 = "Satisfaction with Life Scale - Item 1: In most ways my life is close to my ideal.", Sat_Life_2 = "Satisfaction with Life Scale - Item 2: The conditions of my life are excellent.", Sat_Life_3 = "Satisfaction with Life Scale - Item 3: I am satisfied with my life.", Sat_Life_4 = "Satisfaction with Life Scale - Item 4: So far, I have gotten the important things I want in life.", Sat_Life_5 = "Satisfaction with Life Scale - Item 5: If I could live my life over, I would change almost nothing.", Personality_BFI_1 = "Personality Big Five Inventory - Item 1: I am someone who tends to be quiet", Personality_BFI_2 = "Personality Big Five Inventory - Item 2: I am someone who is dominant, acts as a leader", Personality_BFI_3 = "Personality Big Five Inventory - Item 3: I am someone who is full of energy", Personality_BFI_4 = "Personality Big Five Inventory - Item 4: I am someone who is compassionate, has a soft heart", Personality_BFI_5 = "Personality Big Five Inventory - Item 5: I am someone who is sometimes rude to others", Personality_BFI_6 = "Personality Big Five Inventory - Item 6: I am someone who assumes the best about people", Personality_BFI_7 = "Personality Big Five Inventory - Item 7: I am someone who teds to be disorganized", Personality_BFI_8 = "Personality Big Five Inventory - Item 8: I am someone who has difficulty getting started on tasks", Personality_BFI_9 = "Personality Big Five Inventory - Item 9: I am someone who is reliable, can always be counted on", Personality_BFI_10 = "Personality Big Five Inventory - Item 10: I am someone who worries a lot", Personality_BFI_11 = "Personality Big Five Inventory - Item 11: I am someone who tends to feel depressed, blue", Personality_BFI_12 = "Personality Big Five Inventory - Item 12: I am someone who emotionally stable, not easily upset", Personality_BFI_13 = "Personality Big Five Inventory - Item 13: I am someone who is fascinated by art, music, or literature", Personality_BFI_14 = "Personality Big Five Inventory - Item 14: I am someone who has little interest in abstract ideas", Personality_BFI_15 = "Personality Big Five Inventory - Item 15: I am someone who is original, comes up with new ideas", Sexual_Orientation = "Sexual Orientation", Ethnicity = "Ethnicity")
+
+var_label(eventbrite_cleaned) <- list(Relationship_Status = "Relationship Status", Subj_SES = "Subjective SES - MacArthur SES Ladder: Think of this ladder as representing where people stand in North America. At the top of the ladder are the people who are the best off, those who have the most money, the most education, and the most respected jobs. At the bottom are the people who are the worst off, who have the least money, least education, and the least respected jobs or no job. The higher up you are on this ladder, the closer you are to the people at the very top; the lower you are, the closer you are to the people at the very bottom. Where would you place yourself on this ladder? Please select the rung number where you think you stand at this time in your life, relative to other people in North America.", Income = "In which of these groups did your total family income, from all sources, fall last year -- 2021 -- before taxes, that is. Total income includes interest or dividends, rent, Social Security, other pensions, alimony or child support, unemployment compensation, public aid (welfare), armed forces, or veteran's allotment.", Politics = "Political Alignment", Pre_Attention_Check = "Pre-Event Survey Attention Check: How much attention did you pay to this questionnaire while you were completing it?", Pre_Attention_Comments = "Please use this space to share any additional comments or concerns with the research team.", Post_Survey_Date = "Date Post-Event Survey Was Taken", Event_To_PostSurvey_Days = "Number of Days Between Event Itself and Date Post-Event Survey Was Taken", Post_Event_Occurance = "Was This Event One Time or Recurring?", Post_Event_Attendance = "Was This Your First Time Attending This Event?", Post_Event_Alone = "Did You Attend This Event With Other People or Alone?", Post_Group_Amount = "How Many People Did You Attend This Event With?", Post_Group_Who = "Who Did You Attend This Event With?", Post_Group_Variance = "Do You Typically Attend This Event With the Same Number of People?", Post_Prefer_Alone = "Did You Prefer to Attend This Event Alone?", Post_Active_Passive = "Was This Event Active or Passive?", Post_Event_Location = "Was This Event Indoors, Outdoors, or Both?", Post_Event_Virtual = "Was This Event In-Person, Virtual, or Hybrid?", Post_Event_Pay = "Did You Have To Pay To Attend This Event?", Post_EventType_Auto_Boat = "Auto, Boat, and Air Event", Post_EventType_Business = "Business Event", Post_EventType_Charity = "Charity and Causes Event", Post_EventType_Community = "Community Event", Post_EventType_Family_Education = "Family & Education Event", Post_EventType_Fashion = "Fashion Event", Post_EventType_Food_Drink = "Food & Drink Event", Post_EventType_Government = "Government Event", Post_EventType_Health = "Health Event", Post_EventType_Hobbies = "Hobby-Related Event", Post_EventType_Home_Lifestyle = "Home & Lifestyle Event", Post_EventType_Music = "Music Event", Post_EventType_Arts = "Performing and Visual Arts Event", Post_EventType_Spirituality = "Spirituality Event", Post_EventType_Science_Technology = "Science & Technology Event", Post_EventType_School = "School Activities Event", Post_EventType_Sports_Fitness = "Sports & Fitness Event", Post_EventType_Travel_Outdoors = "Travel & Outdoors Event", Post_EventType_Holiday = "Holiday Event", Post_EventType_Film_Media = "Film & Media Event", Post_EventType_Other = "Other Type of Event")
+
+var_label(eventbrite_cleaned) <- list(Enjoyment = "Enjoyment of Event: How enjoyable did you find the event to be?", Fun = "Fun At the Event: How much fun did you have at the event?", Social_Connection_1 = "Social Connection - Question 1: How connected did you feel with others at the event?", Social_Connection_2 = "Social Connection - Question 2: How distant or isolated did you feel from the other people at the event?", Social_Connection_3 = "Social Connection - Question 3: How much did you feel like you belonged at the event?", Social_Connection_4 = "Social Connection - Question 4: How much did you interact with other people at the event?", Daily_Depression_1 = "Daily Depression - Question 1: Today, to what extent did you feel sad?", Daily_Depression_2 = "Daily Depression: Question 2:  Today, to what extent did you experience a diminished interest or pleasure in activities?", Daily_Loneliness_1 = "Daily Loneliness - Item 1: I felt lonely today", Daily_Loneliness_2 = "Daily Loneliness - Item 2: I felt left out today", Daily_Loneliness_3 = "Daily Loneliness - Item 3: I had no one to turn to today", Daily_Loneliness_4 = "Daily Loneliness - Item 4: I felt isolated from others today", Daily_Social_Anxiety_1 = "Daily Social Anxiet - Item 1: I was worried about what other people thought of me", Daily_Social_Anxiety_2 = "Daily Social Anxiety - Item 2: I was afraid other people noticed my shortcomings", Daily_Social_Anxiety_3 = "Daily Social Anxiety - Item 3: I was afraid that others did not approve of me", Daily_Social_Anxiety_4 = "Daily Social Anxiet - Item 4: I was worried that I would say or do the wrong things", Daily_Social_Anxiety_5 = "Daily Social Anxiety - Item 5: When I was talking to someone, I was worried about what they were thinking of me", Daily_Social_Anxiety_6 = "Daily Social Anxiety - Item 6: I felt uncomfortable and embarrassed when I was the center of attention", Daily_Social_Anxiety_7 = "Daily Social Anxiety - Item 7:  I found it hard to interact with people", Daily_Gen_Anxiety = "Daily General Anxiety: How much anxiety have you experienced in the past day?", Daily_Social_Con_1 = "Daily Social Connection - Item 1: I feel accepted by others and connected to them", Daily_Social_Con_2 = "Daily Social Connection - Item 2: I feel out of touch and disconnected from others", Post_Attention_Check = "Post-Event Survey Check: How much attention did you pay to this questionnaire while you were completing it?", Post_Attention_Comments = "Please use this space to share any additional comments or concerns with the research team")
+
+var_label(eventbrite_cleaned) <- list(SNI_Composite = "Social Network Index Composite Score - Sum of 11 Items", CGSS_Composite = "Canadian General Social Survey Composite Score - Sum of 7 Items", UCLA_Composite = "UCLA Loneliness Scale Composite Score - Sum of 3 Items", PHQ_Composite = "PHQ Composite Score - Sum of 9 Items", Subj_Happy_Composite = "Subjective Happiness Scale Composite Score - Average of 4 Items", Social_Anxiety_Composite = "Social Anxiety Composite - Sum of 3 Items", Sat_Life_Composite = "Satisfaction with Life Scale Composite Score - Sum of 5 Items", Personality_BFI_Extraversion = "Extraversion Sub-Scale of BFI - Sum of 3 Items - Personality_BFI_1_Rev + Personality_BFI_2 + Personality_BFI_3", Personality_BFI_Agreeableness = "Agreeableness Sub-Scale of BFI - Sum of 3 Items - Personality_BFI_4 + Personality_BFI_5_Rev + Personality_BFI_6", Personality_BFI_Conscientiousness = "Conscientiousness Sub-Scale of BFI - Sum of 3 Items - Personality_BFI_7_Rev + Personality_BFI_8_Rev + Personality_BFI_9", Personality_BFI_Neuroticism = "Neuroticism Sub-Scale of BFI - Sum of 3 Items - Personality_BFI_10 + Personality_BFI_11 + Personality_BFI_12", Personality_BFI_Openness = "Openness Sub-Scale of BFI - Sum of 3 Items - Personality_BFI_13 + Personality_BFI_14_Rev + Personality_BFI_15", Enjoyment_Fun_Composite = "Enjoyment/Fun Composite Score - Sum of 2 Items", Social_Connection_Composite = "Social Connection Composite Score - Sum of 4 Items", Daily_Depression_Composite = "Daily Depression Composite Score - Sum of 2 Items", Daily_Loneliness_Composite = "Daily Loneliness Composite - Sum of 4 Items", Daily_Social_Anxiety_Composite = "Daily Social Anxiety Composite Score - Sum of 7 Items", Daily_Social_Con_Composite = "Daily Social Connection Composite Score - Sum of 2 Items")
+
+```
+
+```{r}
+#de-identifying data set
+
+eventbrite_cleaned <- eventbrite_cleaned %>%
+  select(-c(Email, Event, Pre_Attention_Comments, Post_Attention_Comments))
+         
+```
+
+```{r}
+#final check, saving, and exporting
+
+eventbrite_cleaned
+
+save(eventbrite_cleaned, file = "Eventbrite_Data_Cleaned_2023-05-04.Rdata")
+
+```
+

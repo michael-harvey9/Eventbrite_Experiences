@@ -1,0 +1,117 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+#load packages
+
+library(gt)
+library(tidyverse)
+library(gtExtras)
+library(shiny)
+library(gtsummary)
+library(webshot2)
+
+```
+
+```{r}
+#create table for training RMSE values for event experiences
+
+event_experiences <- data.frame(model = c("Enjoyment/Fun Baseline", "Enjoyment/Fun Event Characteristics", "Social Connection Baseline", "Social Connection Event Characteristics"), lr = c(3.08, 5.95, 6.59, 14.11), rf = c(2.65, 2.55, 5.07, 4.53), xgb = c(2.68, 2.68, 5.10, 4.57))
+
+as_tibble(event_experiences)
+
+event_experiences_gt_table <- event_experiences %>%
+  gt(rowname_col = "model") %>%
+  gt_theme_nytimes() %>%
+  tab_header(
+    title = "Event Experiences (Training)",
+    subtitle = md("*Table 1.* Training set RMSE values for baseline models and event characteristics models predicting two event experience outcome variables: feelings of enjoyment/fun at the event and feelings of social connection at the event.")
+  ) %>%
+  tab_footnote(
+    footnote = md("*Note:* RMSE values are unstandardized: feelings of enjoyment/fun at the event were measured on a scale of 2-14 and feelings of social connection at the event were measured on a scale of 4-28. Random forests, bolded, was the best performing model for each model set.")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = rf)
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_body(columns = everything())
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_stub(rows = TRUE)
+  ) %>%
+  tab_options(
+    footnotes.font.size = 12,
+    heading.padding = 3,
+    data_row.padding = 4
+  ) %>%
+  cols_label(
+    lr = "Linear Regression",
+    rf = "Random Forests",
+    xgb = "Gradient Boosting Machines"
+    ) 
+
+event_experiences_gt_table %>%
+  gtsave("Eventbrite_Table 1_2023-05-19.pdf")
+
+```
+
+```{r}
+#create table for test RMSE values for event experiences
+
+event_experiences_final <- data.frame(model = c("Enjoyment/Fun Baseline", "Enjoyment/Fun Event Characteristics", "Enjoyment/Fun Difference", "Social Connection Baseline", "Social Connection Event Characteristics", "Social Connection Difference"), rf = c(2.57, 2.49, "0.08 (3.1%)", 5.03, 4.48, "0.55 (10.9%)"))
+
+as_tibble(event_experiences_final)
+
+event_experiences_final_gt_table <- event_experiences_final %>%
+  gt(rowname_col = "model") %>%
+  gt_theme_nytimes() %>%
+  tab_header(
+    title = "Event Experiences (Test)",
+    subtitle = md("*Table 2.* Test set RMSE values for baseline models and event characteristics models predicting two event experience outcome variables: feelings of enjoyment/fun at the event and feelings of social connection at the event.")
+  ) %>%
+  cols_label(
+    rf = "Random Forests"
+    ) %>%
+  tab_footnote(
+    footnote = md("*Note:* RMSE values are unstandardized: feelings of enjoyment/fun at the event were measured on a scale of 2-14 and feelings of social connection at the event were measured on a scale of 4-28. RMSE differences (and percent improvement in RMSE scores) between baseline and event characteristics models are bolded.")
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"), 
+    locations = cells_body(columns = rf, rows = c(3, 6))
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_body(columns = everything())
+  ) %>%
+  tab_style(
+    style = cell_text(size = 14),
+    locations = cells_stub(rows = TRUE)
+  ) %>%
+  tab_options(
+    footnotes.font.size = 12,
+    heading.padding = 3,
+    data_row.padding = 4
+  ) %>%
+  cols_width(
+    model ~ px(400)
+  )
+
+event_experiences_final_gt_table %>%
+  gtsave("Eventbrite_Table 2_2023-05-19.pdf")
+
+
+```
+
